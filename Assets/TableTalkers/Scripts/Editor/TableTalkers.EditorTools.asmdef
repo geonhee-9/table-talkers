@@ -1,0 +1,29 @@
+{
+    "name": "TableTalkers.EditorTools",
+    "rootNamespace": "TableTalkers.EditorTools",
+    "references": [
+        "TableTalkers.Core",
+        "TableTalkers.Networking",
+        "TableTalkers.Voice",
+        "TableTalkers.Presence",
+        "TableTalkers.Player",
+        "TableTalkers.UI",
+        "TableTalkers.Moderation",
+        "TableTalkers.Platform",
+        "TableTalkers.Bootstrap",
+        "Unity.Netcode.Runtime",
+        "Netcode.Transports.Facepunch",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

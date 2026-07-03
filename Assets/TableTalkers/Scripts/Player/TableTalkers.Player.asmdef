@@ -5,7 +5,8 @@
         "TableTalkers.Core",
         "TableTalkers.Networking",
         "TableTalkers.Presence",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.Netcode.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
