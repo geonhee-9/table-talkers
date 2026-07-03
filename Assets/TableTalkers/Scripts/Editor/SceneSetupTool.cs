@@ -37,12 +37,21 @@ namespace TableTalkers.EditorTools
             EnsureDir(SceneDir);
 
             // 1) Config assets (defaults are fine; endpoints filled later).
-            var roomConfig = LoadOrCreate<RoomConfig>(ConfigDir + "/RoomConfig.asset");
-            var steamConfig = LoadOrCreate<SteamConfig>(ConfigDir + "/SteamConfig.asset");
-            var voiceConfig = LoadOrCreate<VoiceConfig>(ConfigDir + "/VoiceConfig.asset");
-            var moderationConfig = LoadOrCreate<ModerationConfig>(ConfigDir + "/ModerationConfig.asset");
-            var opsConfig = LoadOrCreate<OpsConfig>(ConfigDir + "/OpsConfig.asset");
+            CreateIfMissing<RoomConfig>(ConfigDir + "/RoomConfig.asset");
+            CreateIfMissing<SteamConfig>(ConfigDir + "/SteamConfig.asset");
+            CreateIfMissing<VoiceConfig>(ConfigDir + "/VoiceConfig.asset");
+            CreateIfMissing<ModerationConfig>(ConfigDir + "/ModerationConfig.asset");
+            CreateIfMissing<OpsConfig>(ConfigDir + "/OpsConfig.asset");
             AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            // Re-load from disk so references resolve to fully-imported assets (freshly created
+            // assets can serialize as null references in a scene saved in the same tool run).
+            var roomConfig = AssetDatabase.LoadAssetAtPath<RoomConfig>(ConfigDir + "/RoomConfig.asset");
+            var steamConfig = AssetDatabase.LoadAssetAtPath<SteamConfig>(ConfigDir + "/SteamConfig.asset");
+            var voiceConfig = AssetDatabase.LoadAssetAtPath<VoiceConfig>(ConfigDir + "/VoiceConfig.asset");
+            var moderationConfig = AssetDatabase.LoadAssetAtPath<ModerationConfig>(ConfigDir + "/ModerationConfig.asset");
+            var opsConfig = AssetDatabase.LoadAssetAtPath<OpsConfig>(ConfigDir + "/OpsConfig.asset");
 
             // 2) Player prefab.
             GameObject playerPrefab = BuildPlayerPrefab(roomConfig);
@@ -253,17 +262,15 @@ namespace TableTalkers.EditorTools
             }
         }
 
-        private static T LoadOrCreate<T>(string path) where T : ScriptableObject
+        private static void CreateIfMissing<T>(string path) where T : ScriptableObject
         {
-            var existing = AssetDatabase.LoadAssetAtPath<T>(path);
-            if (existing != null)
+            if (AssetDatabase.LoadAssetAtPath<T>(path) != null)
             {
-                return existing;
+                return;
             }
 
             var inst = ScriptableObject.CreateInstance<T>();
             AssetDatabase.CreateAsset(inst, path);
-            return inst;
         }
 
         private static void RemoveCollider(GameObject go)
