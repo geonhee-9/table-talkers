@@ -108,6 +108,11 @@ namespace TableTalkers.Bootstrap
                 new SeatManager(RoomEntitlements.RoomCapacity),
                 new SeatReservations(_roomConfig.SeatHoldSeconds));
             _network.StartHost();
+
+            // Pro conversion funnel: creating rooms is where the upgrade shows its value.
+            AnalyticsClient.Instance?.Track("room_created",
+                ("capacity", RoomEntitlements.RoomCapacity.ToString()),
+                ("pro", RoomEntitlements.ProActive ? "1" : "0"));
         }
 
         private void HandleLobbyEntered(Lobby lobby)
@@ -183,6 +188,10 @@ namespace TableTalkers.Bootstrap
             }
 
             _appEntry.Flow.TransitionTo(AppState.InRoom);
+
+            AnalyticsClient.Instance?.Track("room_joined",
+                ("is_host", _network.IsHost ? "1" : "0"),
+                ("members", _lobby.CurrentLobby?.MemberCount.ToString() ?? "?"));
         }
 
         private void HandleDisconnected()
