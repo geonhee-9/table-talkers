@@ -5,9 +5,25 @@ namespace TableTalkers.Voice
     /// <summary>
     /// Voice tunables kept out of code. Create via Assets > Create > TableTalkers > Voice Config.
     /// </summary>
+    public enum VoiceBackend
+    {
+        SteamVoice = 0,
+        Odin = 1
+    }
+
     [CreateAssetMenu(fileName = "VoiceConfig", menuName = "TableTalkers/Voice Config", order = 2)]
     public sealed class VoiceConfig : ScriptableObject
     {
+        [Header("Backend")]
+        [Tooltip("Which IVoiceService implementation to use. Odin requires the ODIN SDK (v1).")]
+        [SerializeField] private VoiceBackend _backend = VoiceBackend.SteamVoice;
+
+        [Header("Audio quality (applied by backends that support them)")]
+        [Tooltip("Echo cancellation. Steam voice applies its own pipeline; ODIN uses these flags.")]
+        [SerializeField] private bool _echoCancellation = true;
+        [SerializeField] private bool _noiseSuppression = true;
+        [SerializeField] private bool _autoGainControl = true;
+
         [Tooltip("Steam P2P channel reserved for voice — keeps voice separate from state sync.")]
         [SerializeField, Min(0)] private int _voiceChannel = 1;
 
@@ -23,6 +39,10 @@ namespace TableTalkers.Voice
         [Tooltip("How fast the measured speaking level decays per second.")]
         [SerializeField, Range(0.5f, 20f)] private float _levelDecayPerSecond = 6f;
 
+        public VoiceBackend Backend => _backend;
+        public bool EchoCancellation => _echoCancellation;
+        public bool NoiseSuppression => _noiseSuppression;
+        public bool AutoGainControl => _autoGainControl;
         public int VoiceChannel => _voiceChannel;
         public int FallbackSampleRate => _fallbackSampleRate;
         public float JitterBufferSeconds => _jitterBufferSeconds;

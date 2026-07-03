@@ -20,21 +20,22 @@ namespace TableTalkers.Bootstrap
         [SerializeField] private AppEntry _appEntry;
         [SerializeField] private SteamLobby _lobby;
         [SerializeField] private NetworkSessionService _network;
-        [SerializeField] private SteamVoiceService _voice;
+        [SerializeField] private VoiceServiceSelector _voiceSelector;
         [SerializeField] private RoomConfig _roomConfig;
 
         private bool _voiceJoined;
 
+        private IVoiceService Voice => _voiceSelector.Service;
+        private IVoicePeerRoster VoiceRoster => _voiceSelector.Roster;
+
         private void Start()
         {
-            if (_lobby == null || _network == null || _voice == null || _roomConfig == null)
+            if (_lobby == null || _network == null || _voiceSelector == null || _roomConfig == null)
             {
-                Debug.LogError("[Session] Missing references. 🔧 person: assign SteamLobby, NetworkSessionService, SteamVoiceService, RoomConfig.");
+                Debug.LogError("[Session] Missing references. 🔧 person: assign SteamLobby, NetworkSessionService, VoiceServiceSelector, RoomConfig.");
                 enabled = false;
                 return;
             }
-
-            VoiceServices.Set(_voice);
 
             if (_lobby.IsAvailable)
             {
@@ -74,7 +75,7 @@ namespace TableTalkers.Bootstrap
 
         public void LeaveRoom()
         {
-            _ = _voice.LeaveAsync();
+            _ = Voice.LeaveAsync();
             _voiceJoined = false;
             _network.Shutdown();
             _lobby.LeaveLobby();
@@ -102,20 +103,20 @@ namespace TableTalkers.Bootstrap
             // Voice peers = current lobby members (both host and guests track everyone).
             foreach (Friend member in lobby.Members)
             {
-                _voice.AddPeer(member.Id.Value);
+                VoiceRoster.AddPeer(member.Id.Value);
             }
         }
 
-        private void HandleMemberJoined(Lobby lobby, Friend member) => _voice.AddPeer(member.Id.Value);
+        private void HandleMemberJoined(Lobby lobby, Friend member) => VoiceRoster.AddPeer(member.Id.Value);
 
-        private void HandleMemberLeft(Lobby lobby, Friend member) => _voice.RemovePeer(member.Id.Value);
+        private void HandleMemberLeft(Lobby lobby, Friend member) => VoiceRoster.RemovePeer(member.Id.Value);
 
         private void HandleConnected()
         {
             if (!_voiceJoined && _lobby.CurrentLobby.HasValue)
             {
                 _voiceJoined = true;
-                _ = _voice.JoinAsync(_lobby.CurrentLobby.Value.Id.ToString());
+                _ = Voice.JoinAsync(_lobby.CurrentLobby.Value.Id.ToString());
             }
 
             _appEntry.Flow.TransitionTo(AppState.InRoom);
@@ -123,7 +124,7 @@ namespace TableTalkers.Bootstrap
 
         private void HandleDisconnected()
         {
-            _ = _voice.LeaveAsync();
+            _ = Voice.LeaveAsync();
             _voiceJoined = false;
             _appEntry.Flow.TransitionTo(AppState.Lobby);
         }

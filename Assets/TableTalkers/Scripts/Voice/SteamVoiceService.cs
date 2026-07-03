@@ -15,7 +15,7 @@ namespace TableTalkers.Voice
     /// No gameplay/presence code touches this class — only IVoiceService.
     /// The composition root manages the peer set via AddPeer/RemovePeer (lobby membership).
     /// </summary>
-    public sealed class SteamVoiceService : MonoBehaviour, IVoiceService
+    public sealed class SteamVoiceService : MonoBehaviour, IVoiceService, IVoicePeerRoster
     {
         [SerializeField] private VoiceConfig _config;
 
