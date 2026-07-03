@@ -1,0 +1,18 @@
+{
+    "name": "TableTalkers.Moderation",
+    "rootNamespace": "TableTalkers.Moderation",
+    "references": [
+        "TableTalkers.Core",
+        "TableTalkers.Networking",
+        "TableTalkers.Voice"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

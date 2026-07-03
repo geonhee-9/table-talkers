@@ -1,0 +1,23 @@
+{
+    "name": "TableTalkers.Bootstrap",
+    "rootNamespace": "TableTalkers.Bootstrap",
+    "references": [
+        "TableTalkers.Core",
+        "TableTalkers.Networking",
+        "TableTalkers.Voice",
+        "TableTalkers.Presence",
+        "TableTalkers.Player",
+        "TableTalkers.Platform",
+        "TableTalkers.Moderation",
+        "TableTalkers.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

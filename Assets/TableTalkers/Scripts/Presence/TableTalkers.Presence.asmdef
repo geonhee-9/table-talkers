@@ -1,0 +1,19 @@
+{
+    "name": "TableTalkers.Presence",
+    "rootNamespace": "TableTalkers.Presence",
+    "references": [
+        "TableTalkers.Core",
+        "TableTalkers.Networking",
+        "TableTalkers.Voice",
+        "Unity.Netcode.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

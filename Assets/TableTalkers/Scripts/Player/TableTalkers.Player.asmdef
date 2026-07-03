@@ -1,0 +1,18 @@
+{
+    "name": "TableTalkers.Player",
+    "rootNamespace": "TableTalkers.Player",
+    "references": [
+        "TableTalkers.Core",
+        "TableTalkers.Networking",
+        "TableTalkers.Presence"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
