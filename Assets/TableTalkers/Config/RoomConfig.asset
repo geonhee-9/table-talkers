@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e80ab953db7c445ff8e7f5088ebf5349, type: 3}
+  m_Name: RoomConfig
+  m_EditorClassIdentifier: TableTalkers.Core::TableTalkers.Core.RoomConfig
+  _seatCount: 4
+  _maxCapacity: 12
+  _headSyncHz: 15
+  _transformSyncHz: 15
+  _networkTickRate: 30
+  _reconnectAttempts: 5
+  _reconnectDelaySeconds: 3
+  _seatHoldSeconds: 60
