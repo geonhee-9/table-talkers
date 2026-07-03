@@ -1,5 +1,5 @@
 using UnityEngine;
-using TableTalkers.Voice;
+using TableTalkers.Platform;
 
 namespace TableTalkers.UI
 {
@@ -12,6 +12,9 @@ namespace TableTalkers.UI
     /// </summary>
     public sealed class OnboardingPanel : MonoBehaviour
     {
+        [Tooltip("For the legally required links shown on first run.")]
+        [SerializeField] private OpsConfig _opsConfig;
+
         private const string DoneKey = "tt.onboarding.done";
         private const int TestClipSeconds = 10;
 
@@ -116,6 +119,14 @@ namespace TableTalkers.UI
             }
 
             GUILayout.FlexibleSpace();
+
+            // Legal links must be visible at onboarding (privacy / terms / EULA).
+            GUILayout.BeginHorizontal();
+            LegalLink("settings.privacy", _opsConfig != null ? _opsConfig.PrivacyPolicyUrl : "");
+            LegalLink("settings.terms", _opsConfig != null ? _opsConfig.TermsUrl : "");
+            LegalLink("settings.eula", _opsConfig != null ? _opsConfig.EulaUrl : "");
+            GUILayout.EndHorizontal();
+
             if (GUILayout.Button(Loc.Get("onboard.done")))
             {
                 StopTest();
@@ -125,6 +136,17 @@ namespace TableTalkers.UI
             }
 
             GUILayout.EndArea();
+        }
+
+        private static void LegalLink(string locKey, string url)
+        {
+            GUI.enabled = !string.IsNullOrEmpty(url);
+            if (GUILayout.Button(Loc.Get(locKey)))
+            {
+                Application.OpenURL(url);
+            }
+
+            GUI.enabled = true;
         }
 
         private void StopTest()
