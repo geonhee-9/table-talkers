@@ -23,6 +23,7 @@ namespace TableTalkers.Bootstrap
         [SerializeField] private VoiceServiceSelector _voiceSelector;
         [SerializeField] private RoomConfig _roomConfig;
         [SerializeField] private TableTalkers.Moderation.HostModeration _hostModeration;
+        [SerializeField] private SteamDlc _dlc;
 
         private bool _voiceJoined;
 
@@ -74,10 +75,16 @@ namespace TableTalkers.Bootstrap
             }
         }
 
-        /// <summary>Host path: create an invite-only lobby sized by RoomConfig.</summary>
+        /// <summary>
+        /// Host path: create an invite-only lobby. Host-pays model: if the host owns Pro,
+        /// the WHOLE room upgrades (capacity up to MaxCapacity); guests always enter free.
+        /// </summary>
         public void HostRoom()
         {
-            _ = _lobby.CreateLobbyAsync(_roomConfig.SeatCount);
+            bool pro = _dlc != null && _dlc.OwnsPro();
+            int capacity = pro ? _roomConfig.MaxCapacity : _roomConfig.SeatCount;
+            RoomEntitlements.Set(pro, capacity);
+            _ = _lobby.CreateLobbyAsync(capacity);
         }
 
         public void LeaveRoom()
@@ -92,9 +99,13 @@ namespace TableTalkers.Bootstrap
 
         private void HandleLobbyCreated(Lobby lobby)
         {
+            // Advertise the room tier so guests know without owning anything (host-pays).
+            lobby.SetData("pro", RoomEntitlements.ProActive ? "1" : "0");
+            lobby.SetData("capacity", RoomEntitlements.RoomCapacity.ToString());
+
             // Host is the source of truth: init seats, then start hosting over the relay.
             RoomSession.Initialize(
-                new SeatManager(_roomConfig.SeatCount),
+                new SeatManager(RoomEntitlements.RoomCapacity),
                 new SeatReservations(_roomConfig.SeatHoldSeconds));
             _network.StartHost();
         }
@@ -102,6 +113,14 @@ namespace TableTalkers.Bootstrap
         private void HandleLobbyEntered(Lobby lobby)
         {
             _currentHostId = lobby.Owner.Id.Value;
+
+            // Guests read the room tier from lobby data (free entry to upgraded rooms).
+            if (lobby.Owner.Id.Value != SteamClient.SteamId.Value)
+            {
+                bool pro = lobby.GetData("pro") == "1";
+                int capacity = int.TryParse(lobby.GetData("capacity"), out int c) ? c : _roomConfig.SeatCount;
+                RoomEntitlements.Set(pro, capacity);
+            }
 
             // Guests connect to the lobby owner over Steam Relay. (Owner already hosts.)
             if (_lobby.IsAvailable && lobby.Owner.Id.Value != SteamClient.SteamId.Value)

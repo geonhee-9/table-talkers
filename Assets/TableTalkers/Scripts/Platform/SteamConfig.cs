@@ -14,9 +14,13 @@ namespace TableTalkers.Platform
         [Tooltip("Steam App ID. 0 = fall back to the Spacewar test AppID (480) for early testing.")]
         [SerializeField] private uint _appId = 0;
 
+        [Tooltip("Pro DLC App ID (host-pays room upgrade). 0 = Pro gating disabled (everyone free tier).")]
+        [SerializeField] private uint _proDlcAppId = 0;
+
         /// <summary>Valve's public "Spacewar" test AppID, usable without a registered app.</summary>
         public const uint SpacewarTestAppId = 480;
 
         public uint AppId => _appId != 0 ? _appId : SpacewarTestAppId;
+        public uint ProDlcAppId => _proDlcAppId;
     }
 }
