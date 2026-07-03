@@ -22,6 +22,7 @@ namespace TableTalkers.Bootstrap
         [SerializeField] private NetworkSessionService _network;
         [SerializeField] private VoiceServiceSelector _voiceSelector;
         [SerializeField] private RoomConfig _roomConfig;
+        [SerializeField] private TableTalkers.Moderation.HostModeration _hostModeration;
 
         private bool _voiceJoined;
 
@@ -48,6 +49,12 @@ namespace TableTalkers.Bootstrap
             _lobby.MemberLeft += HandleMemberLeft;
             _network.Connected += HandleConnected;
             _network.Disconnected += HandleDisconnected;
+
+            if (_hostModeration != null)
+            {
+                // Room lock = the lobby stops accepting joins (moderation stays Platform-free).
+                _hostModeration.RoomLockChanged += locked => _lobby.SetRoomJoinable(!locked);
+            }
         }
 
         private void OnDestroy()

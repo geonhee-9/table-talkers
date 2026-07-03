@@ -163,6 +163,15 @@ namespace TableTalkers.Platform
             }
         }
 
+        /// <summary>Host: allow/deny new joins (room lock).</summary>
+        public void SetRoomJoinable(bool joinable)
+        {
+            if (IsAvailable && CurrentLobby.HasValue)
+            {
+                CurrentLobby.Value.SetJoinable(joinable);
+            }
+        }
+
         /// <summary>Leaves the current lobby, if in one.</summary>
         public void LeaveLobby()
         {

@@ -4,7 +4,9 @@
     "references": [
         "TableTalkers.Core",
         "TableTalkers.Networking",
-        "TableTalkers.Voice"
+        "TableTalkers.Voice",
+        "Unity.Netcode.Runtime",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
