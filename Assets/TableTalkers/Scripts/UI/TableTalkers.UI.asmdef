@@ -6,7 +6,8 @@
         "TableTalkers.Voice",
         "TableTalkers.Networking",
         "TableTalkers.Platform",
-        "TableTalkers.Moderation"
+        "TableTalkers.Moderation",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
