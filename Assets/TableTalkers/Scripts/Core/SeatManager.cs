@@ -110,5 +110,10 @@ namespace TableTalkers.Core
 
             return empty;
         }
+
+        private bool IsValidIndex(int seatIndex)
+        {
+            return seatIndex >= 0 && seatIndex < _occupants.Length;
+        }
     }
 }
