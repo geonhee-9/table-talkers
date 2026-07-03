@@ -5,7 +5,7 @@
         "TableTalkers.Core",
         "Unity.Netcode.Runtime",
         "Unity.Collections",
-        "Netcode.Transports.Facepunch"
+        "Facepunch Transport for Netcode for GameObjects"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

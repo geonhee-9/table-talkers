@@ -12,7 +12,7 @@
         "TableTalkers.Platform",
         "TableTalkers.Bootstrap",
         "Unity.Netcode.Runtime",
-        "Netcode.Transports.Facepunch",
+        "Facepunch Transport for Netcode for GameObjects",
         "Unity.InputSystem"
     ],
     "includePlatforms": [
