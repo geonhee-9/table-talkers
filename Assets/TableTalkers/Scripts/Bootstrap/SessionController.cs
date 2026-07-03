@@ -101,6 +101,8 @@ namespace TableTalkers.Bootstrap
 
         private void HandleLobbyEntered(Lobby lobby)
         {
+            _currentHostId = lobby.Owner.Id.Value;
+
             // Guests connect to the lobby owner over Steam Relay. (Owner already hosts.)
             if (_lobby.IsAvailable && lobby.Owner.Id.Value != SteamClient.SteamId.Value)
             {
@@ -116,7 +118,42 @@ namespace TableTalkers.Bootstrap
 
         private void HandleMemberJoined(Lobby lobby, Friend member) => VoiceRoster.AddPeer(member.Id.Value);
 
-        private void HandleMemberLeft(Lobby lobby, Friend member) => VoiceRoster.RemovePeer(member.Id.Value);
+        private void HandleMemberLeft(Lobby lobby, Friend member)
+        {
+            VoiceRoster.RemovePeer(member.Id.Value);
+
+            // Host migration: when the host leaves, Steam auto-transfers lobby ownership.
+            // The new owner rehosts; everyone else reconnects to them. Seats reassign on respawn.
+            if (_currentHostId != 0 && member.Id.Value == _currentHostId)
+            {
+                MigrateHost(lobby);
+            }
+        }
+
+        private ulong _currentHostId;
+
+        private void MigrateHost(Lobby lobby)
+        {
+            _network.Shutdown();
+            _voiceJoined = false;
+
+            ulong newOwner = lobby.Owner.Id.Value;
+            _currentHostId = newOwner;
+
+            if (newOwner == SteamClient.SteamId.Value)
+            {
+                Debug.Log("[Session] Host left — this client is the new host.");
+                RoomSession.Initialize(
+                    new SeatManager(_roomConfig.SeatCount),
+                    new SeatReservations(_roomConfig.SeatHoldSeconds));
+                _network.StartHost();
+            }
+            else
+            {
+                Debug.Log("[Session] Host left — reconnecting to the new host.");
+                _network.StartClient(newOwner);
+            }
+        }
 
         private void HandleConnected()
         {

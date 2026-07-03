@@ -50,8 +50,32 @@ namespace TableTalkers.Networking
                 Nm.NetworkConfig.TickRate = (uint)_config.NetworkTickRate;
             }
 
+            // Version gate: P2P means everyone must run the same build. Guests send their app
+            // version on connect; the host rejects mismatches (they get an update prompt).
+            Nm.NetworkConfig.ConnectionApproval = true;
+            Nm.ConnectionApprovalCallback = ApproveConnection;
+
             Nm.OnClientConnectedCallback += HandleClientConnected;
             Nm.OnClientDisconnectCallback += HandleClientDisconnected;
+        }
+
+        private static void ApproveConnection(
+            NetworkManager.ConnectionApprovalRequest request,
+            NetworkManager.ConnectionApprovalResponse response)
+        {
+            string clientVersion = request.Payload != null && request.Payload.Length > 0
+                ? System.Text.Encoding.UTF8.GetString(request.Payload)
+                : "";
+
+            bool sameVersion = clientVersion == Application.version
+                               || request.ClientNetworkId == NetworkManager.Singleton.LocalClientId;
+
+            response.Approved = sameVersion;
+            response.CreatePlayerObject = sameVersion;
+            if (!sameVersion)
+            {
+                response.Reason = $"version_mismatch:{Application.version}";
+            }
         }
 
         private void OnDestroy()
@@ -72,6 +96,7 @@ namespace TableTalkers.Networking
             }
 
             _leaveRequested = false;
+            Nm.NetworkConfig.ConnectionData = System.Text.Encoding.UTF8.GetBytes(Application.version);
             bool ok = Nm.StartHost();
             if (ok)
             {
@@ -99,6 +124,7 @@ namespace TableTalkers.Networking
             _hostSteamId = hostSteamId;
             _leaveRequested = false;
             transport.targetSteamId = hostSteamId;
+            Nm.NetworkConfig.ConnectionData = System.Text.Encoding.UTF8.GetBytes(Application.version);
             return Nm.StartClient();
         }
 
