@@ -3,7 +3,9 @@
     "rootNamespace": "TableTalkers.Networking",
     "references": [
         "TableTalkers.Core",
-        "Unity.Netcode.Runtime"
+        "Unity.Netcode.Runtime",
+        "Unity.Collections",
+        "Netcode.Transports.Facepunch"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
