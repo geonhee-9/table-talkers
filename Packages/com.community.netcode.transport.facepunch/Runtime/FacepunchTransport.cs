@@ -96,7 +96,10 @@ namespace Netcode.Transports.Facepunch
 
             try
             {
-                SteamClient.Init(steamAppId, false);
+                // TableTalkers patch: SteamLobby owns the Steam client lifetime.
+                // Only init here if nothing else already did (avoids double-init errors).
+                if (!SteamClient.IsValid)
+                    SteamClient.Init(steamAppId, false);
             }
             catch (Exception e)
             {
@@ -127,7 +130,9 @@ namespace Netcode.Transports.Facepunch
 
                 connectionManager?.Close();
                 socketManager?.Close();
-                SteamClient.Shutdown();
+                // TableTalkers patch: do NOT shut down the Steam client here — NGO calls
+                // transport.Shutdown() on every session stop (leave room, host migration,
+                // reconnect), which would kill the lobby and voice. SteamLobby owns shutdown.
             }
             catch (Exception e)
             {
