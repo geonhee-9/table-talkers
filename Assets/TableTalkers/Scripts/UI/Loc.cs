@@ -20,7 +20,20 @@ namespace TableTalkers.UI
             { "mic.device.note", "Device selection arrives with spatial voice (v1)." },
             { "room.create", "Create Room" },
             { "room.invite", "Invite Friends" },
-            { "room.leave", "Leave Room" }
+            { "room.leave", "Leave Room" },
+            { "chat.title", "Chat (Tab)" },
+            { "chat.send", "Send" },
+            { "onboard.title", "Welcome — quick mic check" },
+            { "onboard.mic", "Microphone" },
+            { "onboard.test", "Test mic" },
+            { "onboard.testing", "Speak now — the bar should move" },
+            { "onboard.hear", "Can everyone hear you? All set!" },
+            { "onboard.done", "Start talking" },
+            { "settings.title", "Settings (O)" },
+            { "settings.nameplates", "Always show nameplates" },
+            { "settings.privacy", "Privacy Policy" },
+            { "settings.terms", "Terms of Service" },
+            { "settings.eula", "EULA" }
         };
 
         public static string Get(string key)

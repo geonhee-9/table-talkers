@@ -7,7 +7,9 @@
         "TableTalkers.Networking",
         "TableTalkers.Platform",
         "TableTalkers.Moderation",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.Netcode.Runtime",
+        "Unity.Collections"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
