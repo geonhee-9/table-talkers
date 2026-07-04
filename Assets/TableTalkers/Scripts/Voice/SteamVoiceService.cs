@@ -168,6 +168,8 @@ namespace TableTalkers.Voice
                 _config != null ? _config.RingBufferSeconds : 2f,
                 _config != null ? _config.JitterBufferSeconds : 0.08f,
                 _config != null ? _config.LevelDecayPerSecond : 6f);
+            playback.ParticipantId = steamId.ToString();
+            playback.PanStrength = _config != null ? _config.StereoPanStrength : 0.45f;
             playback.Muted = _mutedPeers.Contains(steamId);
             if (_pendingVolumes.TryGetValue(steamId, out float volume))
             {

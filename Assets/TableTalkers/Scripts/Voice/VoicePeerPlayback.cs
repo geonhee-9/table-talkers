@@ -1,4 +1,5 @@
 using UnityEngine;
+using TableTalkers.Core;
 
 namespace TableTalkers.Voice
 {
@@ -29,7 +30,14 @@ namespace TableTalkers.Voice
         /// <summary>Smoothed output level 0..1, for speaking indicators/lipsync.</summary>
         public float Level { get; private set; }
 
+        /// <summary>This peer's participant id — used to pan audio toward their seat.</summary>
+        public string ParticipantId { get; set; }
+
+        /// <summary>0 = mono; higher = stronger left/right placement by seat direction.</summary>
+        public float PanStrength { get; set; }
+
         private float _levelDecayPerSecond = 6f;
+        private volatile float _pan; // -1 (left) .. +1 (right), updated on main thread
 
         public void Configure(int sourceSampleRate, float ringSeconds, float jitterSeconds, float levelDecayPerSecond)
         {
@@ -89,6 +97,59 @@ namespace TableTalkers.Voice
         private void Update()
         {
             Level = Mathf.Max(0f, Level - _levelDecayPerSecond * Time.deltaTime * Level);
+            UpdatePan();
+        }
+
+        /// <summary>
+        /// Seat-direction stereo pan: a peer sitting to my head-relative left sounds from the left.
+        /// Uses Core abstractions only (participants + seat anchors); real 3D audio arrives with
+        /// ODIN in v1 — this is a light presence aid, IsSpatial stays false.
+        /// </summary>
+        private void UpdatePan()
+        {
+            if (PanStrength <= 0f || string.IsNullOrEmpty(ParticipantId)
+                || SeatAnchorRegistry.Instance == null)
+            {
+                _pan = 0f;
+                return;
+            }
+
+            IParticipant local = ParticipantRegistry.Local;
+            IParticipant peer = null;
+            var all = ParticipantRegistry.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i].Id == ParticipantId)
+                {
+                    peer = all[i];
+                    break;
+                }
+            }
+
+            if (local == null || peer == null)
+            {
+                _pan = 0f;
+                return;
+            }
+
+            Transform localAnchor = SeatAnchorRegistry.Instance.GetAnchor(local.SeatIndex);
+            Transform peerAnchor = SeatAnchorRegistry.Instance.GetAnchor(peer.SeatIndex);
+            if (localAnchor == null || peerAnchor == null)
+            {
+                _pan = 0f;
+                return;
+            }
+
+            Vector3 toPeer = peerAnchor.position - localAnchor.position;
+            if (toPeer.sqrMagnitude < 0.0001f)
+            {
+                _pan = 0f;
+                return;
+            }
+
+            Quaternion headRotation = localAnchor.rotation * local.HeadOrientation;
+            Vector3 right = headRotation * Vector3.right;
+            _pan = Mathf.Clamp(Vector3.Dot(toPeer.normalized, right), -1f, 1f) * PanStrength;
         }
 
         private void OnAudioFilterRead(float[] data, int channels)
@@ -99,6 +160,12 @@ namespace TableTalkers.Voice
             }
 
             float peak = 0f;
+            // Equal-power pan gains (constant loudness while placing the voice left/right).
+            float pan = _pan;
+            float panAngle = (pan + 1f) * 0.25f * Mathf.PI;
+            float leftGain = Mathf.Cos(panAngle);
+            float rightGain = Mathf.Sin(panAngle);
+
             lock (_lock)
             {
                 for (int frame = 0; frame < data.Length; frame += channels)
@@ -121,9 +188,18 @@ namespace TableTalkers.Voice
                         peak = abs;
                     }
 
-                    for (int c = 0; c < channels; c++)
+                    if (channels >= 2)
                     {
-                        data[frame + c] = sample;
+                        data[frame] = sample * leftGain * 1.41f;
+                        data[frame + 1] = sample * rightGain * 1.41f;
+                        for (int c = 2; c < channels; c++)
+                        {
+                            data[frame + c] = sample;
+                        }
+                    }
+                    else
+                    {
+                        data[frame] = sample;
                     }
                 }
             }

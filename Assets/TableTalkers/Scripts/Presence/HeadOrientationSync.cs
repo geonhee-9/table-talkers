@@ -36,6 +36,9 @@ namespace TableTalkers.Presence
         /// <summary>Current (smoothed) head orientation, local space relative to the seat.</summary>
         public Quaternion CurrentOrientation => _smoothed;
 
+        /// <summary>Additive rotation for procedural emotes (nod/shake), composed on top of sync.</summary>
+        public Quaternion EmoteOffset { get; set; } = Quaternion.identity;
+
         public override void OnNetworkSpawn()
         {
             if (_headBone == null)
@@ -96,7 +99,7 @@ namespace TableTalkers.Presence
         private void ApplyToHeadBone()
         {
             // Head bone rotates relative to the body (which faces the table via the seat anchor).
-            _headBone.localRotation = _smoothed;
+            _headBone.localRotation = _smoothed * EmoteOffset;
         }
     }
 }

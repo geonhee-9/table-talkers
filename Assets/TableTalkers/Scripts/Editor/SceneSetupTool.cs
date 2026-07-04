@@ -122,18 +122,29 @@ namespace TableTalkers.EditorTools
             var body = Primitive(PrimitiveType.Capsule, "Body", root.transform,
                 new Vector3(0f, 0.3f, 0f), new Vector3(0.4f, 0.5f, 0.4f), bodyMat);
 
-            // Head (sphere) with eyes so gaze direction reads at a glance
+            // Head (sphere) with eyes and a mouth so gaze + speech read at a glance
             var headGo = Primitive(PrimitiveType.Sphere, "Head", root.transform,
                 new Vector3(0f, 1.0f, 0f), new Vector3(0.35f, 0.35f, 0.35f), headMat);
-            Primitive(PrimitiveType.Sphere, "EyeL", headGo.transform,
+            var eyeL = Primitive(PrimitiveType.Sphere, "EyeL", headGo.transform,
                 new Vector3(-0.28f, 0.15f, 0.42f), new Vector3(0.16f, 0.16f, 0.16f), eyeMat);
-            Primitive(PrimitiveType.Sphere, "EyeR", headGo.transform,
+            var eyeR = Primitive(PrimitiveType.Sphere, "EyeR", headGo.transform,
                 new Vector3(0.28f, 0.15f, 0.42f), new Vector3(0.16f, 0.16f, 0.16f), eyeMat);
+            var mouth = Primitive(PrimitiveType.Sphere, "Mouth", headGo.transform,
+                new Vector3(0f, -0.22f, 0.44f), new Vector3(0.30f, 0.07f, 0.12f), eyeMat);
+
+            // Hands used by procedural emotes (hidden until an emote plays)
+            var handL = Primitive(PrimitiveType.Sphere, "HandL", root.transform,
+                new Vector3(-0.3f, 0.45f, 0.1f), new Vector3(0.14f, 0.14f, 0.14f), headMat);
+            var handR = Primitive(PrimitiveType.Sphere, "HandR", root.transform,
+                new Vector3(0.3f, 0.45f, 0.1f), new Vector3(0.14f, 0.14f, 0.14f), headMat);
+            handL.SetActive(false);
+            handR.SetActive(false);
 
             var indicator = headGo.AddComponent<SpeakingIndicator>();
             headGo.AddComponent<Nameplate>();
-            headGo.AddComponent<AmplitudeLipsync>();
             var colorizer = root.AddComponent<AvatarColorizer>();
+            var life = root.AddComponent<AvatarLife>();
+            var emotePlayer = root.AddComponent<ProceduralEmotePlayer>();
 
             // Speaking ring on the floor under the avatar (toggled by SpeakingIndicator)
             var ring = Primitive(PrimitiveType.Cylinder, "SpeakingRing", root.transform,
@@ -159,6 +170,14 @@ namespace TableTalkers.EditorTools
             SetRef(indicator, "_indicator", ring);
             SetRef(indicator, "_tintTarget", headGo.GetComponent<Renderer>());
             SetRef(colorizer, "_body", body.GetComponent<Renderer>());
+            SetRef(life, "_body", body.transform);
+            SetRef(life, "_eyeLeft", eyeL.transform);
+            SetRef(life, "_eyeRight", eyeR.transform);
+            SetRef(life, "_mouth", mouth.transform);
+            SetRef(emotePlayer, "_head", head);
+            SetRef(emotePlayer, "_body", body.transform);
+            SetRef(emotePlayer, "_handLeft", handL.transform);
+            SetRef(emotePlayer, "_handRight", handR.transform);
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PlayerPrefabPath);
             Object.DestroyImmediate(root);
@@ -241,6 +260,8 @@ namespace TableTalkers.EditorTools
             var onboarding = app.AddComponent<OnboardingPanel>();
             var settings = app.AddComponent<SettingsPanel>();
             app.AddComponent<DebugOverlay>();
+            app.AddComponent<PresenceNotifier>();
+            app.AddComponent<HintBar>();
             var analytics = app.AddComponent<AnalyticsClient>();
             var remoteConfig = app.AddComponent<RemoteConfigClient>();
 

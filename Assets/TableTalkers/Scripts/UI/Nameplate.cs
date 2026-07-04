@@ -34,6 +34,10 @@ namespace TableTalkers.UI
             _plate.localPosition = new Vector3(0f, _height, 0f);
 
             _text = go.AddComponent<TextMesh>();
+            // A runtime-created TextMesh renders nothing until a font + its material are assigned.
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _text.font = font;
+            go.GetComponent<MeshRenderer>().material = font.material;
             _text.anchor = TextAnchor.MiddleCenter;
             _text.alignment = TextAlignment.Center;
             _text.characterSize = _characterSize;

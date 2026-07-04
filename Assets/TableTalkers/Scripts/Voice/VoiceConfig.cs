@@ -39,6 +39,9 @@ namespace TableTalkers.Voice
         [Tooltip("How fast the measured speaking level decays per second.")]
         [SerializeField, Range(0.5f, 20f)] private float _levelDecayPerSecond = 6f;
 
+        [Tooltip("Light stereo panning by seat direction (0 = mono). Not true 3D — that's ODIN in v1.")]
+        [SerializeField, Range(0f, 1f)] private float _stereoPanStrength = 0.45f;
+
         public VoiceBackend Backend => _backend;
         public bool EchoCancellation => _echoCancellation;
         public bool NoiseSuppression => _noiseSuppression;
@@ -48,5 +51,6 @@ namespace TableTalkers.Voice
         public float JitterBufferSeconds => _jitterBufferSeconds;
         public float RingBufferSeconds => _ringBufferSeconds;
         public float LevelDecayPerSecond => _levelDecayPerSecond;
+        public float StereoPanStrength => _stereoPanStrength;
     }
 }

@@ -33,7 +33,10 @@ namespace TableTalkers.UI
             { "settings.nameplates", "Always show nameplates" },
             { "settings.privacy", "Privacy Policy" },
             { "settings.terms", "Terms of Service" },
-            { "settings.eula", "EULA" }
+            { "settings.eula", "EULA" },
+            { "toast.joined", "{0} joined the table" },
+            { "toast.left", "{0} left the table" },
+            { "hint.bar", "V hold=talk · 1-5 emotes · Tab chat · M mic · K safety · O settings · F1 debug · H hide" }
         };
 
         public static string Get(string key)
