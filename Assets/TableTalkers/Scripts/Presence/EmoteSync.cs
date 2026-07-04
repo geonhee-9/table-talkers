@@ -34,6 +34,12 @@ namespace TableTalkers.Presence
                 return;
             }
 
+            // Don't fire emotes while the user is typing in an IMGUI field (e.g. chat).
+            if (GUIUtility.keyboardControl != 0)
+            {
+                return;
+            }
+
             if (Keyboard.current.digit1Key.wasPressedThisFrame) Play(EmoteKind.Nod);
             else if (Keyboard.current.digit2Key.wasPressedThisFrame) Play(EmoteKind.Laugh);
             else if (Keyboard.current.digit3Key.wasPressedThisFrame) Play(EmoteKind.RaiseHand);

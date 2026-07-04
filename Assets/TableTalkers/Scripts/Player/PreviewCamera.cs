@@ -23,11 +23,13 @@ namespace TableTalkers.Player
         private void OnEnable()
         {
             ParticipantRegistry.Added += HandleParticipantAdded;
+            ParticipantRegistry.Removed += HandleParticipantRemoved;
         }
 
         private void OnDisable()
         {
             ParticipantRegistry.Added -= HandleParticipantAdded;
+            ParticipantRegistry.Removed -= HandleParticipantRemoved;
         }
 
         private void HandleParticipantAdded(IParticipant participant)
@@ -36,6 +38,17 @@ namespace TableTalkers.Player
             {
                 if (_listener != null) _listener.enabled = false;
                 _camera.enabled = false;
+            }
+        }
+
+        private void HandleParticipantRemoved(IParticipant participant)
+        {
+            // Local player left the room (or was despawned) — hand the view back to the preview
+            // camera so leaving a room never ends on a black screen.
+            if (participant.IsLocal)
+            {
+                if (_listener != null) _listener.enabled = true;
+                _camera.enabled = true;
             }
         }
     }
