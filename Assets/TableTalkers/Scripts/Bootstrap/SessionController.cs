@@ -215,10 +215,12 @@ namespace TableTalkers.Bootstrap
 
         // ---- Temporary IMGUI lobby panel (replaced by real LobbyUI later) ----
 
+        private string _joinCodeDraft = "";
+
         private void OnGUI()
         {
-            const float w = 220f;
-            GUILayout.BeginArea(new Rect(10, 10, w, 200), GUI.skin.box);
+            const float w = 230f;
+            GUILayout.BeginArea(new Rect(10, 10, w, 240), GUI.skin.box);
             GUILayout.Label(_lobby.IsAvailable ? $"Steam: {SteamClient.Name}" : "Steam: not running");
 
             if (!_network.IsRunning)
@@ -229,12 +231,32 @@ namespace TableTalkers.Bootstrap
                     HostRoom();
                 }
 
-                GUILayout.Label("Join: accept a Steam invite");
+                GUILayout.Label("Join: accept a Steam invite, or code:");
+                GUILayout.BeginHorizontal();
+                _joinCodeDraft = GUILayout.TextField(_joinCodeDraft, 20);
+                if (GUILayout.Button("Join", GUILayout.Width(50f))
+                    && ulong.TryParse(_joinCodeDraft.Trim(), out ulong lobbyId))
+                {
+                    _ = _lobby.JoinLobbyAsync(lobbyId);
+                }
+
+                GUILayout.EndHorizontal();
                 GUI.enabled = true;
             }
             else
             {
                 GUILayout.Label(_network.IsHost ? "Hosting room" : "In room (guest)");
+
+                // Room code: share it so guests can join without the invite overlay.
+                if (_lobby.CurrentLobby.HasValue)
+                {
+                    GUILayout.Label($"Room code: {_lobby.CurrentLobby.Value.Id.Value}");
+                    if (GUILayout.Button("Copy Room Code"))
+                    {
+                        GUIUtility.systemCopyBuffer = _lobby.CurrentLobby.Value.Id.Value.ToString();
+                    }
+                }
+
                 if (_lobby.CurrentLobby.HasValue && GUILayout.Button("Invite Friends"))
                 {
                     _lobby.OpenInviteOverlay();
