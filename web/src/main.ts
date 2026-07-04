@@ -66,24 +66,31 @@ hud.setupDebugToggle();
 hud.showJoin(roomIdFromHash());
 
 const enterBtn = document.getElementById('enter') as HTMLButtonElement;
+const enterNoMicBtn = document.getElementById('enterNoMic') as HTMLButtonElement;
 
-enterBtn.onclick = async () => {
+function setJoinBusy(busy: boolean, label = '테이블에 앉기'): void {
+  enterBtn.disabled = busy;
+  enterNoMicBtn.disabled = busy;
+  enterBtn.textContent = busy ? label : '테이블에 앉기';
+}
+
+async function joinRoom(withMic: boolean): Promise<void> {
   const name = (document.getElementById('name') as HTMLInputElement).value.trim() || 'Guest';
   localStorage.setItem('tt.name', name);
-
-  enterBtn.disabled = true;
-  enterBtn.textContent = '마이크 확인 중…';
   hud.showJoinError('');
+  voice.initAudio(); // user gesture — lets us hear peers even without a mic
 
-  try {
-    await voice.initMic();
-  } catch (err) {
-    console.error('[TableTalkers] getUserMedia failed:', err);
-    const name = err instanceof Error ? err.name : 'UnknownError';
-    hud.showJoinError('micDenied', name);
-    enterBtn.disabled = false;
-    enterBtn.textContent = '테이블에 앉기';
-    return;
+  if (withMic) {
+    setJoinBusy(true, '마이크 확인 중…');
+    try {
+      await voice.requestMic();
+    } catch (err) {
+      console.error('[TableTalkers] getUserMedia failed:', err);
+      const reason = err instanceof Error ? err.name : 'UnknownError';
+      hud.showJoinError('micDenied', reason);
+      setJoinBusy(false);
+      return; // let the user retry or use "마이크 없이 둘러보기"
+    }
   }
 
   const roomId = roomIdFromHash() ?? newRoomId();
@@ -103,25 +110,28 @@ enterBtn.onclick = async () => {
     hud.showJoin(null);
   };
 
-  enterBtn.textContent = '방 연결 중…';
+  setJoinBusy(true, '방 연결 중…');
   try {
     await net.connect();
   } catch (err) {
     console.error('[TableTalkers] signaling connect failed:', err);
     hud.showJoinError('signalDown');
     net = null;
-    enterBtn.disabled = false;
-    enterBtn.textContent = '테이블에 앉기';
+    setJoinBusy(false);
     return;
   }
 
   hud.hideJoin();
-  hud.showRoomPanel(roomId, () => {
+  hud.showRoomPanel(roomId, voice.hasMic, () => {
     net?.leave();
     location.hash = '';
     location.reload();
   });
-};
+  if (!voice.hasMic) hud.toast('마이크 없이 입장 — 남의 목소리는 들려요. 초대 링크를 공유하세요.');
+}
+
+enterBtn.onclick = () => void joinRoom(true);
+enterNoMicBtn.onclick = () => void joinRoom(false);
 
 // ---- Render loop ----
 const clock = new THREE.Clock();

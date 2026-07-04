@@ -29,18 +29,35 @@ export class WebRtcVoice implements VoiceService {
   private localBuf: Float32Array<ArrayBuffer> | null = null;
   private readonly peers = new Map<string, PeerAudio>();
 
-  /** Ask for the mic with browser AEC/NS/AGC on (the free voice-quality pipeline). */
-  async initMic(): Promise<MediaStream> {
-    this.mic = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
-    this.ctx = new AudioContext();
-    const src = this.ctx.createMediaStreamSource(this.mic);
-    this.localAnalyser = this.ctx.createAnalyser();
+  /** Create the audio graph (needs a user gesture). Enables hearing peers even without a mic. */
+  initAudio(): void {
+    if (!this.ctx) this.ctx = new AudioContext();
+    void this.ctx.resume();
+  }
+
+  get hasMic(): boolean {
+    return this.mic !== null;
+  }
+
+  /**
+   * Ask for the mic with browser AEC/NS/AGC on (the free voice-quality pipeline).
+   * Rejects on denial OR after timeoutMs (some browsers hang on the permission prompt) —
+   * so the join flow never gets stuck.
+   */
+  async requestMic(timeoutMs = 10000): Promise<void> {
+    this.initAudio();
+    const stream = await withTimeout(
+      navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      }),
+      timeoutMs,
+    );
+    this.mic = stream;
+    const src = this.ctx!.createMediaStreamSource(stream);
+    this.localAnalyser = this.ctx!.createAnalyser();
     this.localAnalyser.fftSize = 256;
     this.localBuf = new Float32Array(this.localAnalyser.fftSize);
     src.connect(this.localAnalyser); // analysis only — no local playback (no echo)
-    return this.mic;
   }
 
   get micStream(): MediaStream | null {
@@ -138,4 +155,14 @@ export class WebRtcVoice implements VoiceService {
     }
     return Math.min(1, peak);
   }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new DOMException('mic request timed out', 'TimeoutError')), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
 }

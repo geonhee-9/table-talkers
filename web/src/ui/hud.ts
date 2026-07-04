@@ -30,9 +30,10 @@ export function showJoinError(key: string, detail?: string): void {
   el('joinErr').textContent = key ? loc(key) + (detail ? ` (${detail})` : '') : '';
 }
 
-export function showRoomPanel(roomId: string, onLeave: () => void): void {
+export function showRoomPanel(roomId: string, hasMic: boolean, onLeave: () => void): void {
   el('room').style.display = 'block';
-  el('roomLine').innerHTML = `${loc('roomLine')}<code>${roomId}</code>`;
+  const micTag = hasMic ? '' : ' <span style="color:#ff8a7a">· 마이크 꺼짐</span>';
+  el('roomLine').innerHTML = `${loc('roomLine')}<code>${roomId}</code>${micTag}`;
   el('hint').style.display = 'block';
   el('copyLink').onclick = () => {
     void navigator.clipboard.writeText(location.href);
