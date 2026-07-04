@@ -82,13 +82,15 @@ export class Avatar {
     const k = 1 - Math.exp(-CONFIG.poseLerpSpeed * dt);
     this.smoothYaw += (p.headYaw - this.smoothYaw) * k;
     this.smoothPitch += (p.headPitch - this.smoothPitch) * k;
+    // Yaw sign is negated to match the seated camera's look convention (a right turn
+    // must read as a right turn on the remote avatar, not a mirror image).
     this.head.rotation.set(
       (-this.smoothPitch * Math.PI) / 180,
-      (this.smoothYaw * Math.PI) / 180,
+      (-this.smoothYaw * Math.PI) / 180,
       0,
     );
     // Upper body follows the head a little, like real seated posture.
-    this.body.rotation.y = (this.smoothYaw * 0.25 * Math.PI) / 180;
+    this.body.rotation.y = (-this.smoothYaw * 0.25 * Math.PI) / 180;
 
     // Mouth from voice level (works for local and remote alike).
     const level = this.voice.getLevel(p.id);
