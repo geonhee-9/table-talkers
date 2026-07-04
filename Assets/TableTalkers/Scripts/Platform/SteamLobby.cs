@@ -40,7 +40,12 @@ namespace TableTalkers.Platform
         {
             if (_config == null)
             {
-                Debug.LogError("[SteamLobby] SteamConfig not assigned; cannot initialize Steam.");
+                _config = Resources.Load<SteamConfig>("SteamConfig");
+            }
+
+            if (_config == null)
+            {
+                Debug.LogError("[SteamLobby] SteamConfig not found (assign it or place it in a Resources folder).");
                 IsAvailable = false;
                 return;
             }

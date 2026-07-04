@@ -39,6 +39,11 @@ namespace TableTalkers.Networking
 
         private void Start()
         {
+            if (_config == null)
+            {
+                _config = Resources.Load<RoomConfig>("RoomConfig");
+            }
+
             if (Nm == null)
             {
                 Debug.LogError("[NetworkSession] No NetworkManager in scene. 🔧 person: add one with FacepunchTransport.");

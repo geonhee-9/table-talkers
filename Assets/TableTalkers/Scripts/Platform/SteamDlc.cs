@@ -15,6 +15,11 @@ namespace TableTalkers.Platform
         /// <summary>Does the LOCAL user own the Pro DLC? False when Steam is unavailable or unset.</summary>
         public bool OwnsPro()
         {
+            if (_config == null)
+            {
+                _config = Resources.Load<SteamConfig>("SteamConfig");
+            }
+
             if (!SteamClient.IsValid || _config == null || _config.ProDlcAppId == 0)
             {
                 return false;

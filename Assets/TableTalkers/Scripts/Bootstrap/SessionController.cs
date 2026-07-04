@@ -39,6 +39,7 @@ namespace TableTalkers.Bootstrap
             if (_voiceSelector == null) _voiceSelector = GetComponent<VoiceServiceSelector>();
             if (_hostModeration == null) _hostModeration = GetComponent<TableTalkers.Moderation.HostModeration>();
             if (_dlc == null) _dlc = GetComponent<SteamDlc>();
+            if (_roomConfig == null) _roomConfig = Resources.Load<RoomConfig>("RoomConfig");
 
             if (_lobby == null || _network == null || _voiceSelector == null || _roomConfig == null)
             {

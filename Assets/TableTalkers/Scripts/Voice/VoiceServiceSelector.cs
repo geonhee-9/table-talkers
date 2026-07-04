@@ -18,6 +18,11 @@ namespace TableTalkers.Voice
 
         private void Awake()
         {
+            if (_config == null)
+            {
+                _config = Resources.Load<VoiceConfig>("VoiceConfig");
+            }
+
             // Self-heal: broken/missing inspector refs must never break voice.
             // Find siblings on this GameObject; create them if absent.
             if (_steam == null)

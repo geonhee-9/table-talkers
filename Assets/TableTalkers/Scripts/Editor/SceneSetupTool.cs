@@ -25,7 +25,9 @@ namespace TableTalkers.EditorTools
     /// </summary>
     public static class SceneSetupTool
     {
-        private const string ConfigDir = "Assets/TableTalkers/Config";
+        // Configs live under a Resources folder so components can load them at runtime even if a
+        // scene reference is missing (belt-and-suspenders against scene wiring loss).
+        private const string ConfigDir = "Assets/TableTalkers/Resources";
         private const string SceneDir = "Assets/TableTalkers/Scenes";
         private const string PlayerPrefabPath = "Assets/TableTalkers/Player.prefab";
         private const string ScenePath = SceneDir + "/Boot.unity";
