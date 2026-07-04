@@ -26,8 +26,8 @@ export function hideJoin(): void {
   el('join').style.display = 'none';
 }
 
-export function showJoinError(key: string): void {
-  el('joinErr').textContent = loc(key);
+export function showJoinError(key: string, detail?: string): void {
+  el('joinErr').textContent = key ? loc(key) + (detail ? ` (${detail})` : '') : '';
 }
 
 export function showRoomPanel(roomId: string, onLeave: () => void): void {

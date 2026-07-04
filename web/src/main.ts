@@ -65,14 +65,24 @@ let net: RoomNetwork | null = null;
 hud.setupDebugToggle();
 hud.showJoin(roomIdFromHash());
 
-document.getElementById('enter')!.onclick = async () => {
+const enterBtn = document.getElementById('enter') as HTMLButtonElement;
+
+enterBtn.onclick = async () => {
   const name = (document.getElementById('name') as HTMLInputElement).value.trim() || 'Guest';
   localStorage.setItem('tt.name', name);
 
+  enterBtn.disabled = true;
+  enterBtn.textContent = '마이크 확인 중…';
+  hud.showJoinError('');
+
   try {
     await voice.initMic();
-  } catch {
-    hud.showJoinError('micDenied');
+  } catch (err) {
+    console.error('[TableTalkers] getUserMedia failed:', err);
+    const name = err instanceof Error ? err.name : 'UnknownError';
+    hud.showJoinError('micDenied', name);
+    enterBtn.disabled = false;
+    enterBtn.textContent = '테이블에 앉기';
     return;
   }
 
@@ -93,11 +103,15 @@ document.getElementById('enter')!.onclick = async () => {
     hud.showJoin(null);
   };
 
+  enterBtn.textContent = '방 연결 중…';
   try {
     await net.connect();
-  } catch {
+  } catch (err) {
+    console.error('[TableTalkers] signaling connect failed:', err);
     hud.showJoinError('signalDown');
     net = null;
+    enterBtn.disabled = false;
+    enterBtn.textContent = '테이블에 앉기';
     return;
   }
 
