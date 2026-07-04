@@ -59,6 +59,9 @@ namespace TableTalkers.Bootstrap
             _network.Connected += HandleConnected;
             _network.Disconnected += HandleDisconnected;
 
+            Debug.Log($"[Session] Running. Steam available: {_lobby.IsAvailable}. " +
+                      "If you see this in Play mode, the Create Room panel is drawing top-left.");
+
             if (_hostModeration != null)
             {
                 // Room lock = the lobby stops accepting joins (moderation stays Platform-free).
