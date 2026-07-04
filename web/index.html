@@ -46,7 +46,30 @@
 
   <div id="debug" class="panel"></div>
   <div id="toast" class="panel"></div>
-  <div id="hint" class="panel">드래그/클릭=둘러보기 · F1=디버그 · 링크 공유=초대</div>
+  <div id="hint" class="panel">드래그=둘러보기 · 1~5=이모트 · Tab=채팅 · F1=디버그</div>
+
+  <div id="bar" class="panel" style="bottom:44px; left:50%; transform:translateX(-50%); display:none;">
+    <button id="muteBtn" class="barBtn">🎤 켜짐</button>
+    <button class="barBtn emoteBtn" data-kind="0">🙂 끄덕</button>
+    <button class="barBtn emoteBtn" data-kind="1">😂 웃음</button>
+    <button class="barBtn emoteBtn" data-kind="2">✋ 손들기</button>
+    <button class="barBtn emoteBtn" data-kind="3">👍 좋아요</button>
+    <button class="barBtn emoteBtn" data-kind="4">👏 박수</button>
+    <button id="chatBtn" class="barBtn">💬</button>
+  </div>
+
+  <div id="chat" class="panel" style="bottom:104px; left:10px; width:280px; display:none;">
+    <div id="chatLog" style="max-height:180px; overflow-y:auto; font-size:13px; margin-bottom:6px;"></div>
+    <input id="chatInput" maxlength="200" placeholder="메시지 (Enter로 전송)"
+           style="width:95%; padding:6px; border-radius:6px; border:1px solid #4a3a30; background:#241c17; color:#f0e6da;" />
+  </div>
+
+  <style>
+    .barBtn { margin: 0 2px; padding: 6px 10px; border: 0; border-radius: 6px;
+              background: #3a2d24; color: #f0e6da; font-size: 14px; cursor: pointer; }
+    .barBtn:hover { background: #4d3b2e; }
+    .barBtn.active { background: #c96f3b; }
+  </style>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

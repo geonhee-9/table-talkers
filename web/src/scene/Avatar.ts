@@ -24,6 +24,11 @@ export class Avatar {
   private blinkStart = -1;
   private readonly breathePhase = Math.random() * Math.PI * 2;
   private lastName = '';
+  private readonly handL: THREE.Mesh;
+  private readonly handR: THREE.Mesh;
+  private emoteKind = -1;
+  private emoteT = 0;
+  private emoteLabel: THREE.Sprite | null = null;
 
   constructor(private readonly participant: Participant, private readonly voice: VoiceService) {
     const skin = new THREE.MeshStandardMaterial({ color: 0xeacbad, roughness: 0.7 });
@@ -57,7 +62,24 @@ export class Avatar {
     this.nameSprite = makeNameSprite('');
     this.nameSprite.position.y = 1.45;
 
-    this.group.add(this.body, this.head, this.ring, this.nameSprite);
+    // Hands for emotes (hidden until one plays).
+    this.handL = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), skin);
+    this.handR = this.handL.clone();
+    this.handL.visible = false;
+    this.handR.visible = false;
+
+    this.group.add(this.body, this.head, this.ring, this.nameSprite, this.handL, this.handR);
+  }
+
+  /** One-shot procedural emote: 0 nod · 1 laugh · 2 raise hand · 3 thumbs up · 4 clap. */
+  playEmote(kind: number): void {
+    this.emoteKind = kind;
+    this.emoteT = 0;
+    const labels = ['끄덕끄덕', 'ㅎㅎㅎ', '손들기!', '좋아요', '짝짝짝'];
+    if (this.emoteLabel) this.group.remove(this.emoteLabel);
+    this.emoteLabel = makeNameSprite(labels[kind] ?? '!');
+    this.emoteLabel.position.y = 1.7;
+    this.group.add(this.emoteLabel);
   }
 
   /** First-person: hide my own head/name so they never block my camera. */
@@ -122,10 +144,74 @@ export class Avatar {
     // Breathing.
     this.body.scale.y = 1 + 0.015 * Math.sin(now * 1.9 + this.breathePhase);
 
+    this.updateEmote(dt);
+
     // Name (arrives async over ctrl channel).
     if (p.name !== this.lastName) {
       this.lastName = p.name;
       updateNameSprite(this.nameSprite, p.name);
+    }
+  }
+
+  /** Code-driven emote motion — no animation assets needed for primitive avatars. */
+  private updateEmote(dt: number): void {
+    if (this.emoteKind < 0) return;
+    this.emoteT += dt;
+    const t = this.emoteT;
+    const raiseHold = 5; // ✋ stays up (turn-taking aid), others are short
+    const duration = this.emoteKind === 2 ? raiseHold : this.emoteKind === 4 ? 1.4 : 1.0;
+
+    switch (this.emoteKind) {
+      case 0: // nod: head pitch bob (composes on top of the synced pose)
+        this.head.rotation.x += Math.sin((t / 1.0) * Math.PI * 4) * (16 * Math.PI / 180);
+        break;
+      case 1: { // laugh: bounce + head roll shake
+        const wave = Math.sin(t * 22);
+        this.body.position.y = 0.35 + Math.abs(wave) * 0.03;
+        this.head.rotation.z = wave * (5 * Math.PI / 180);
+        break;
+      }
+      case 2: { // raise hand: right hand up beside the head, hold, drop when done/speaking
+        this.handR.visible = true;
+        const up = Math.min(1, t / 0.25);
+        this.handR.position.set(0.3, 0.5 + up * 0.85, 0.05);
+        if (this.participant.speaking && t > 0.5) this.emoteT = raiseHold; // lower on speak
+        break;
+      }
+      case 3: { // thumbs up: hand pops in front of the chest
+        this.handR.visible = true;
+        const pop = 1 + 0.35 * Math.exp(-5 * t) * Math.sin(t * 16);
+        this.handR.position.set(0.2, 0.95, 0.3);
+        this.handR.scale.setScalar(pop);
+        break;
+      }
+      case 4: { // clap: hands meet repeatedly
+        this.handL.visible = true;
+        this.handR.visible = true;
+        const spread = 0.05 + 0.14 * Math.abs(Math.sin(t * 14));
+        this.handL.position.set(-spread, 0.95, 0.3);
+        this.handR.position.set(spread, 0.95, 0.3);
+        break;
+      }
+    }
+
+    // Float + fade the label.
+    if (this.emoteLabel) {
+      this.emoteLabel.position.y = 1.7 + Math.min(t, 1.4) * 0.3;
+      this.emoteLabel.material.opacity = Math.max(0, 1 - t / Math.min(duration, 1.6));
+    }
+
+    if (t >= duration) {
+      this.emoteKind = -1;
+      this.handL.visible = false;
+      this.handR.visible = false;
+      this.handR.scale.setScalar(1);
+      this.body.position.y = 0.35;
+      this.head.rotation.z = 0;
+      if (this.emoteLabel) {
+        this.group.remove(this.emoteLabel);
+        this.emoteLabel = null;
+      }
     }
   }
 }

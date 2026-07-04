@@ -6,10 +6,12 @@ import { participants, type Participant } from '../core/participants';
 import type { WebRtcVoice } from '../voice/voice';
 
 interface CtrlMsg {
-  t: 'hi' | 'seats' | 'ping' | 'pong';
+  t: 'hi' | 'seats' | 'ping' | 'pong' | 'emote' | 'chat';
   name?: string;
   seats?: Record<string, number>;
   ts?: number;
+  kind?: number;  // emote id (one-shot event, never synced state)
+  text?: string;  // chat line
 }
 
 interface PeerLink {
@@ -33,6 +35,9 @@ export class RoomNetwork {
   onSeated: (() => void) | null = null;
   onPeerCount: (() => void) | null = null;
   onHostLeft: (() => void) | null = null;
+  onEmote: ((participantId: string, kind: number) => void) | null = null;
+  onChat: ((participantId: string, text: string) => void) | null = null;
+  onRoomFull: (() => void) | null = null;
 
   constructor(
     private readonly roomId: string,
@@ -202,7 +207,26 @@ export class RoomNetwork {
         if (link && msg.ts) link.rttMs = performance.now() - msg.ts;
         break;
       }
+      case 'emote':
+        if (typeof msg.kind === 'number') this.onEmote?.(peerId, msg.kind);
+        break;
+      case 'chat':
+        if (msg.text) this.onChat?.(peerId, msg.text.slice(0, 200));
+        break;
     }
+  }
+
+  /** One-shot emote to everyone (plus local echo via onEmote). */
+  sendEmote(kind: number): void {
+    this.broadcastCtrl({ t: 'emote', kind });
+    this.onEmote?.(this.selfId, kind);
+  }
+
+  sendChat(text: string): void {
+    const line = text.trim().slice(0, 200);
+    if (!line) return;
+    this.broadcastCtrl({ t: 'chat', text: line });
+    this.onChat?.(this.selfId, line);
   }
 
   /** HOST ONLY: fill seats in join order and broadcast the full map. */
@@ -237,6 +261,11 @@ export class RoomNetwork {
       }
     }
     if (localSeated) this.onSeated?.();
+
+    // Seat map arrived but we're not in it → the table is full.
+    if (!localSeated && this.selfId && !(this.selfId in map)) {
+      this.onRoomFull?.();
+    }
   }
 
   private dropPeer(peerId: string): void {

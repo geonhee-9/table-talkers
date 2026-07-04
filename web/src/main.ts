@@ -110,6 +110,13 @@ async function joinRoom(withMic: boolean): Promise<void> {
     hud.showJoin(null);
   };
 
+  net.onEmote = (id, kind) => avatars.get(id)?.playEmote(kind);
+  net.onChat = (id, text) => {
+    const name = participants.get(id)?.name || '?';
+    appendChatLine(name, text);
+  };
+  net.onRoomFull = () => hud.toast('자리가 다 찼어요 — 구경만 할 수 있어요.');
+
   setJoinBusy(true, '방 연결 중…');
   try {
     await net.connect();
@@ -127,11 +134,72 @@ async function joinRoom(withMic: boolean): Promise<void> {
     location.hash = '';
     location.reload();
   });
-  if (!voice.hasMic) hud.toast('마이크 없이 입장 — 남의 목소리는 들려요. 초대 링크를 공유하세요.');
+  document.getElementById('bar')!.style.display = 'block';
+  if (!voice.hasMic) {
+    muteBtn.disabled = true;
+    muteBtn.textContent = '🎤 없음';
+    hud.toast('마이크 없이 입장 — 남의 목소리는 들려요. 초대 링크를 공유하세요.');
+  }
 }
 
 enterBtn.onclick = () => void joinRoom(true);
 enterNoMicBtn.onclick = () => void joinRoom(false);
+
+// ---- Bottom bar: mute, emotes, chat ----
+const muteBtn = document.getElementById('muteBtn') as HTMLButtonElement;
+let micOn = true;
+
+muteBtn.onclick = () => {
+  micOn = !micOn;
+  voice.setInputEnabled(micOn);
+  muteBtn.textContent = micOn ? '🎤 켜짐' : '🔇 꺼짐';
+  muteBtn.classList.toggle('active', !micOn);
+};
+
+for (const btn of document.querySelectorAll<HTMLButtonElement>('.emoteBtn')) {
+  btn.onclick = () => net?.sendEmote(Number(btn.dataset.kind));
+}
+
+const chatPanel = document.getElementById('chat')!;
+const chatInput = document.getElementById('chatInput') as HTMLInputElement;
+const chatLog = document.getElementById('chatLog')!;
+
+function toggleChat(): void {
+  const open = chatPanel.style.display !== 'block';
+  chatPanel.style.display = open ? 'block' : 'none';
+  if (open) chatInput.focus();
+}
+
+document.getElementById('chatBtn')!.onclick = toggleChat;
+
+function appendChatLine(name: string, text: string): void {
+  const div = document.createElement('div');
+  div.textContent = `${name}: ${text}`;
+  chatLog.appendChild(div);
+  while (chatLog.children.length > 50) chatLog.removeChild(chatLog.firstChild!);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  if (chatPanel.style.display !== 'block') hud.toast(`💬 ${name}: ${text.slice(0, 40)}`);
+}
+
+chatInput.onkeydown = (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter' && chatInput.value.trim()) {
+    net?.sendChat(chatInput.value);
+    chatInput.value = '';
+  } else if (e.key === 'Escape') {
+    toggleChat();
+  }
+};
+
+window.addEventListener('keydown', (e) => {
+  const typing = document.activeElement instanceof HTMLInputElement;
+  if (e.key === 'Tab' && net) {
+    e.preventDefault();
+    toggleChat();
+  } else if (!typing && net && e.key >= '1' && e.key <= '5') {
+    net.sendEmote(Number(e.key) - 1);
+  }
+});
 
 // ---- Render loop ----
 const clock = new THREE.Clock();
