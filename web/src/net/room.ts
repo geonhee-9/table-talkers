@@ -17,6 +17,8 @@ interface PeerLink {
   ctrl?: RTCDataChannel;
   pose?: RTCDataChannel;
   rttMs: number;
+  remoteSet: boolean;             // remote description applied yet?
+  pendingIce: RTCIceCandidateInit[]; // ICE that arrived before the remote description
 }
 
 export class RoomNetwork {
@@ -84,9 +86,12 @@ export class RoomNetwork {
     }
   }
 
-  private async createLink(peerId: string, initiator: boolean): Promise<void> {
+  private ensureLink(peerId: string): PeerLink {
+    let link = this.links.get(peerId);
+    if (link) return link;
+
     const pc = new RTCPeerConnection({ iceServers: [...CONFIG.stunServers] });
-    const link: PeerLink = { pc, rttMs: -1 };
+    link = { pc, rttMs: -1, remoteSet: false, pendingIce: [] };
     this.links.set(peerId, link);
 
     participants.add({
@@ -102,34 +107,56 @@ export class RoomNetwork {
     pc.onicecandidate = (ev) => {
       if (ev.candidate) this.signal(peerId, { ice: ev.candidate });
     };
+    pc.onconnectionstatechange = () => {
+      console.log(`[net] peer ${peerId}: ${pc.connectionState}`);
+      this.onPeerCount?.();
+    };
+    // Either side may end up receiving channels (robust to who offered).
+    pc.ondatachannel = (ev) => {
+      if (ev.channel.label === 'ctrl') this.bindCtrl(peerId, ev.channel);
+      else if (ev.channel.label === 'pose') this.bindPose(peerId, ev.channel);
+    };
+    return link;
+  }
 
+  private async createLink(peerId: string, initiator: boolean): Promise<void> {
+    const link = this.ensureLink(peerId);
     if (initiator) {
-      this.bindCtrl(peerId, pc.createDataChannel('ctrl'));
-      this.bindPose(peerId, pc.createDataChannel('pose', { ordered: false, maxRetransmits: 0 }));
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      this.signal(peerId, { sdp: pc.localDescription });
-    } else {
-      pc.ondatachannel = (ev) => {
-        if (ev.channel.label === 'ctrl') this.bindCtrl(peerId, ev.channel);
-        else if (ev.channel.label === 'pose') this.bindPose(peerId, ev.channel);
-      };
+      this.bindCtrl(peerId, link.pc.createDataChannel('ctrl'));
+      this.bindPose(peerId, link.pc.createDataChannel('pose', { ordered: false, maxRetransmits: 0 }));
+      const offer = await link.pc.createOffer();
+      await link.pc.setLocalDescription(offer);
+      this.signal(peerId, { sdp: link.pc.localDescription });
     }
   }
 
   private async handleSignal(from: string, data: { sdp?: RTCSessionDescriptionInit; ice?: RTCIceCandidateInit }): Promise<void> {
-    const link = this.links.get(from);
-    if (!link) return;
+    const link = this.ensureLink(from); // offer may arrive before our peer-joined event
     if (data.sdp) {
       await link.pc.setRemoteDescription(data.sdp);
+      link.remoteSet = true;
+      for (const ice of link.pendingIce) await link.pc.addIceCandidate(ice).catch(() => undefined);
+      link.pendingIce = [];
       if (data.sdp.type === 'offer') {
         const answer = await link.pc.createAnswer();
         await link.pc.setLocalDescription(answer);
         this.signal(from, { sdp: link.pc.localDescription });
       }
     } else if (data.ice) {
-      await link.pc.addIceCandidate(data.ice).catch(() => undefined);
+      if (link.remoteSet) {
+        await link.pc.addIceCandidate(data.ice).catch(() => undefined);
+      } else {
+        link.pendingIce.push(data.ice); // queue until the remote description lands
+      }
     }
+  }
+
+  /** Debug: 'connected' / 'connecting' / etc. + whether the pose channel is open. */
+  linkState(peerId: string): string {
+    const link = this.links.get(peerId);
+    if (!link) return '—';
+    const pose = link.pose?.readyState === 'open' ? 'pose✓' : 'pose…';
+    return `${link.pc.connectionState} ${pose}`;
   }
 
   private signal(to: string, data: unknown): void {

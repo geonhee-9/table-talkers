@@ -66,11 +66,15 @@ export function updateDebug(net: RoomNetwork | null): void {
   if (!debugVisible || !net) return;
   const lines = [`host: ${net.amHost ? 'me' : 'peer'}`];
   for (const p of participants.all()) {
-    const rtt = p.isLocal ? 0 : net.rttOf(p.id);
-    lines.push(
-      `seat ${p.seatIndex} ${p.name || '?'}${p.isLocal ? ' (me)' : ''}` +
-      `${p.speaking ? ' *' : ''}  ${rtt >= 0 ? Math.round(rtt) + 'ms' : ''}`,
-    );
+    if (p.isLocal) {
+      lines.push(`seat ${p.seatIndex} ${p.name || '?'} (me)${p.speaking ? ' *' : ''}`);
+    } else {
+      const rtt = net.rttOf(p.id);
+      lines.push(
+        `seat ${p.seatIndex} ${p.name || '?'}${p.speaking ? ' *' : ''}  ` +
+        `${net.linkState(p.id)}${rtt >= 0 ? '  ' + Math.round(rtt) + 'ms' : ''}`,
+      );
+    }
   }
   el('debug').textContent = lines.join('\n');
 }
