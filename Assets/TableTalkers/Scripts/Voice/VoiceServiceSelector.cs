@@ -18,6 +18,29 @@ namespace TableTalkers.Voice
 
         private void Awake()
         {
+            // Self-heal: broken/missing inspector refs must never break voice.
+            // Find siblings on this GameObject; create them if absent.
+            if (_steam == null)
+            {
+                _steam = GetComponent<SteamVoiceService>();
+            }
+
+            if (_steam == null)
+            {
+                _steam = gameObject.AddComponent<SteamVoiceService>();
+            }
+
+            if (_odin == null)
+            {
+                _odin = GetComponent<OdinVoiceService>();
+            }
+
+            _steam.SetConfigIfMissing(_config);
+            if (_odin != null)
+            {
+                _odin.SetConfigIfMissing(_config);
+            }
+
             bool useOdin = _config != null && _config.Backend == VoiceBackend.Odin && _odin != null;
             if (useOdin)
             {
@@ -28,12 +51,6 @@ namespace TableTalkers.Voice
             {
                 Service = _steam;
                 Roster = _steam;
-            }
-
-            if (Service == null)
-            {
-                Debug.LogError("[VoiceSelector] No voice backend assigned.");
-                return;
             }
 
             VoiceServices.Set(Service);

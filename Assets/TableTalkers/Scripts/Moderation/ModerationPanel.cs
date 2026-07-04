@@ -15,6 +15,13 @@ namespace TableTalkers.Moderation
 
         private bool _visible;
 
+        private void Start()
+        {
+            // Self-heal: find siblings if inspector refs are broken.
+            if (_reportClient == null) _reportClient = GetComponent<ReportClient>();
+            if (_hostModeration == null) _hostModeration = GetComponent<HostModeration>();
+        }
+
         private void Update()
         {
             if (Keyboard.current != null && Keyboard.current.kKey.wasPressedThisFrame)

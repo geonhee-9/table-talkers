@@ -32,6 +32,14 @@ namespace TableTalkers.Bootstrap
 
         private void Start()
         {
+            // Self-heal: same-GameObject components are found automatically if refs are broken.
+            if (_appEntry == null) _appEntry = GetComponent<AppEntry>();
+            if (_lobby == null) _lobby = GetComponent<SteamLobby>();
+            if (_network == null) _network = GetComponent<NetworkSessionService>();
+            if (_voiceSelector == null) _voiceSelector = GetComponent<VoiceServiceSelector>();
+            if (_hostModeration == null) _hostModeration = GetComponent<TableTalkers.Moderation.HostModeration>();
+            if (_dlc == null) _dlc = GetComponent<SteamDlc>();
+
             if (_lobby == null || _network == null || _voiceSelector == null || _roomConfig == null)
             {
                 Debug.LogError("[Session] Missing references. 🔧 person: assign SteamLobby, NetworkSessionService, VoiceServiceSelector, RoomConfig.");

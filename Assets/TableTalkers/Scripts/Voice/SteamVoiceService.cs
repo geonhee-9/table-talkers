@@ -21,6 +21,15 @@ namespace TableTalkers.Voice
 
         public bool IsSpatial => false;
 
+        /// <summary>Self-heal path: lets the selector supply the config when the ref is missing.</summary>
+        public void SetConfigIfMissing(VoiceConfig config)
+        {
+            if (_config == null)
+            {
+                _config = config;
+            }
+        }
+
         private readonly Dictionary<ulong, VoicePeerPlayback> _peers = new();
         private readonly HashSet<ulong> _mutedPeers = new();
         private readonly Dictionary<ulong, float> _pendingVolumes = new();

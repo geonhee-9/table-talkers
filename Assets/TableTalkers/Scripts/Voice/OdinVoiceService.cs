@@ -16,6 +16,15 @@ namespace TableTalkers.Voice
 
         public bool IsSpatial => true;
 
+        /// <summary>Self-heal path: lets the selector supply the config when the ref is missing.</summary>
+        public void SetConfigIfMissing(VoiceConfig config)
+        {
+            if (_config == null)
+            {
+                _config = config;
+            }
+        }
+
 #if TT_ODIN
         // Real ODIN integration lands here when the SDK is imported:
         // - JoinAsync: OdinHandler.Instance.JoinRoom(roomId) with APM settings from _config
