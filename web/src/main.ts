@@ -201,6 +201,11 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// Dev/diagnostic handle (used by agent-driven preview tests; harmless in prod).
+Object.assign(window as unknown as Record<string, unknown>, {
+  __tt: { participants, avatars, net: () => net },
+});
+
 // ---- Render loop ----
 const clock = new THREE.Clock();
 

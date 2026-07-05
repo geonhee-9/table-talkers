@@ -75,6 +75,7 @@ export class Avatar {
   playEmote(kind: number): void {
     this.emoteKind = kind;
     this.emoteT = 0;
+    if (this.participant.isLocal) return; // own label would float at eye level
     const labels = ['끄덕끄덕', 'ㅎㅎㅎ', '손들기!', '좋아요', '짝짝짝'];
     if (this.emoteLabel) this.group.remove(this.emoteLabel);
     this.emoteLabel = makeNameSprite(labels[kind] ?? '!');
@@ -99,6 +100,11 @@ export class Avatar {
 
   update(dt: number, now: number): void {
     const p = this.participant;
+
+    // Unseated participants (spectators, still-connecting peers) must not render
+    // at the world origin — inside the table.
+    this.group.visible = p.seatIndex >= 0;
+    if (!this.group.visible) return;
 
     // Head pose: remote values interpolate; local is driven directly by the camera.
     const k = 1 - Math.exp(-CONFIG.poseLerpSpeed * dt);
