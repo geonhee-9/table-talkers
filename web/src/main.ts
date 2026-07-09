@@ -1,6 +1,7 @@
 // App entry: join flow → scene + network + voice, one render loop.
 import * as THREE from 'three';
 import { participants, type Participant } from './core/participants';
+import { seatLayout } from './core/seats';
 import { buildLounge } from './scene/Lounge';
 import { Avatar } from './scene/Avatar';
 import { SeatedCamera } from './player/SeatedCamera';
@@ -97,10 +98,7 @@ async function joinRoom(withMic: boolean): Promise<void> {
   location.hash = `r=${roomId}`;
 
   net = new RoomNetwork(roomId, name, voice);
-  net.onSeated = () => {
-    const local = participants.local();
-    if (local) seated.sit(local.seatIndex);
-  };
+  net.onSeated = () => seated.sit();
   net.onHostLeft = () => {
     hud.toast(hud.loc('hostLeft'));
     net?.leave();
@@ -122,7 +120,7 @@ async function joinRoom(withMic: boolean): Promise<void> {
     await net.connect();
   } catch (err) {
     console.error('[TableTalkers] signaling connect failed:', err);
-    hud.showJoinError('signalDown');
+    hud.showJoinError(err instanceof Error && err.message === 'room-full' ? 'roomFull' : 'signalDown');
     net = null;
     setJoinBusy(false);
     return;
@@ -203,7 +201,7 @@ window.addEventListener('keydown', (e) => {
 
 // Dev/diagnostic handle (used by agent-driven preview tests; harmless in prod).
 Object.assign(window as unknown as Record<string, unknown>, {
-  __tt: { participants, avatars, net: () => net },
+  __tt: { participants, avatars, seatLayout, net: () => net },
 });
 
 // ---- Render loop ----

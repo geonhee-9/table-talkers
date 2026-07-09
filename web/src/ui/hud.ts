@@ -10,6 +10,7 @@ const L: Record<string, string> = {
   hostLeft: '호스트가 자리를 떠났어요. 새 테이블을 만들어주세요.',
   micDenied: '마이크 권한이 필요해요. 브라우저 주소창의 자물쇠에서 허용해주세요.',
   signalDown: '연결 서버에 닿을 수 없어요 (시그널링 서버 확인).',
+  roomFull: '이 테이블은 만석이에요 (최대 10명).',
 };
 
 export const loc = (k: string): string => L[k] ?? k;

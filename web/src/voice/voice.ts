@@ -1,7 +1,8 @@
 // VoiceService seam: presence/UI code depends on this interface only — the WebRTC
 // implementation hides behind it (same invariant as the Unity prototype's IVoiceService).
 
-import { CONFIG, SEAT_ANCHORS } from '../core/config';
+import { CONFIG } from '../core/config';
+import { seatLayout } from '../core/seats';
 import { participants } from '../core/participants';
 
 export interface VoiceService {
@@ -127,13 +128,13 @@ export class WebRtcVoice implements VoiceService {
   updatePanning(): void {
     const local = participants.local();
     if (!local || local.seatIndex < 0) return;
-    const la = SEAT_ANCHORS[local.seatIndex];
+    const la = seatLayout.anchor(local.seatIndex);
     const headYawRad = ((la.yawDeg + local.headYaw) * Math.PI) / 180;
 
     for (const [id, peer] of this.peers) {
       const p = participants.get(id);
       if (!p || p.seatIndex < 0) { peer.panner.pan.value = 0; continue; }
-      const pa = SEAT_ANCHORS[p.seatIndex];
+      const pa = seatLayout.anchor(p.seatIndex);
       const dx = pa.x - la.x;
       const dz = pa.z - la.z;
       const len = Math.hypot(dx, dz) || 1;

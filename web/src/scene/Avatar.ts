@@ -2,7 +2,8 @@
 // blink/breathing, seat colors, speaking ring, name sprite. All locally animated —
 // only head yaw/pitch and the name arrive over the network.
 import * as THREE from 'three';
-import { CONFIG, SEAT_ANCHORS } from '../core/config';
+import { CONFIG } from '../core/config';
+import { seatLayout } from '../core/seats';
 import type { Participant } from '../core/participants';
 import type { VoiceService } from '../voice/voice';
 
@@ -91,8 +92,8 @@ export class Avatar {
 
   applySeat(): void {
     const seat = this.participant.seatIndex;
-    if (seat < 0 || seat >= SEAT_ANCHORS.length) return;
-    const a = SEAT_ANCHORS[seat];
+    if (seat < 0 || seat >= seatLayout.seatCount) return;
+    const a = seatLayout.anchor(seat);
     this.group.position.set(a.x, 0.55, a.z);
     this.group.rotation.y = (a.yawDeg * Math.PI) / 180;
     (this.body.material as THREE.MeshStandardMaterial).color.setHex(PALETTE[seat % PALETTE.length]);

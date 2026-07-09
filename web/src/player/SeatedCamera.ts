@@ -1,7 +1,9 @@
 // Seated first-person look: no locomotion, mouse-drag (or pointer lock) head rotation
-// with yaw/pitch clamps relative to the seat's forward. Feeds local head pose.
+// with yaw/pitch clamps relative to the seat's forward. Position/orientation follow the
+// dynamic seat layout every frame, so the camera glides when the table rearranges.
 import * as THREE from 'three';
-import { CONFIG, SEAT_ANCHORS } from '../core/config';
+import { CONFIG } from '../core/config';
+import { seatLayout } from '../core/seats';
 
 export class SeatedCamera {
   yaw = 0;   // degrees
@@ -21,14 +23,11 @@ export class SeatedCamera {
     });
   }
 
-  /** Place the camera at a seat and aim it at the table centre. */
-  sit(seatIndex: number): void {
-    const a = SEAT_ANCHORS[seatIndex] ?? SEAT_ANCHORS[0];
-    this.camera.position.set(a.x, 0.55 + CONFIG.eyeHeight, a.z);
+  /** Reset the gaze when first taking a seat. */
+  sit(): void {
     this.camera.rotation.order = 'YXZ';
     this.yaw = 0;
     this.pitch = 0;
-    this.applyRotation(a.yawDeg);
   }
 
   /** Overview shot before being seated. */
@@ -37,15 +36,13 @@ export class SeatedCamera {
     this.camera.lookAt(0, 0.8, 0);
   }
 
+  /** Call every frame while seated — tracks the (possibly resized) layout. */
   update(seatIndex: number): void {
     if (seatIndex < 0) return;
-    const a = SEAT_ANCHORS[seatIndex] ?? SEAT_ANCHORS[0];
-    this.applyRotation(a.yawDeg);
-  }
-
-  private applyRotation(seatYawDeg: number): void {
+    const a = seatLayout.anchor(seatIndex);
+    this.camera.position.set(a.x, 0.55 + CONFIG.eyeHeight, a.z);
     // Face the table (seat forward = anchor yaw + 180 in world), then add look offsets.
-    const yawRad = ((seatYawDeg + 180 - this.yaw) * Math.PI) / 180;
+    const yawRad = ((a.yawDeg + 180 - this.yaw) * Math.PI) / 180;
     const pitchRad = (this.pitch * Math.PI) / 180;
     this.camera.rotation.set(pitchRad, yawRad, 0);
   }

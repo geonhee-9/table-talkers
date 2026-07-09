@@ -3,6 +3,7 @@
 // per peer: 'ctrl' (reliable: names, seats, pings) and 'pose' (lossy: head yaw/pitch).
 import { CONFIG } from '../core/config';
 import { participants, type Participant } from '../core/participants';
+import { seatLayout } from '../core/seats';
 import type { WebRtcVoice } from '../voice/voice';
 
 interface CtrlMsg {
@@ -62,6 +63,10 @@ export class RoomNetwork {
       };
       this.ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data as string);
+        if (msg.t === 'full') {
+          reject(new Error('room-full'));
+          return;
+        }
         if (msg.t === 'welcome') {
           this.selfId = msg.id;
           this.isHost = msg.peers.length === 0;
@@ -229,42 +234,40 @@ export class RoomNetwork {
     this.onChat?.(this.selfId, line);
   }
 
-  /** HOST ONLY: fill seats in join order and broadcast the full map. */
+  /**
+   * HOST ONLY: compact seats to 0..N-1 in join order (dynamic round table needs
+   * contiguous indices — N people = N chairs evenly spaced), then broadcast.
+   */
   private assignSeats(): void {
-    const everyone = [this.selfId, ...this.links.keys()];
-    for (const id of everyone) {
-      if (!this.seats.has(id)) {
-        for (let s = 0; s < CONFIG.seatCount; s++) {
-          if (![...this.seats.values()].includes(s)) {
-            this.seats.set(id, s);
-            break;
-          }
-        }
-      }
+    const present = [this.selfId, ...this.links.keys()];
+    const ordered = [...this.seats.keys()].filter((id) => present.includes(id));
+    for (const id of present) {
+      if (!ordered.includes(id)) ordered.push(id);
     }
-    // Drop seats of departed peers.
-    for (const id of [...this.seats.keys()]) {
-      if (id !== this.selfId && !this.links.has(id)) this.seats.delete(id);
-    }
+
+    this.seats.clear();
+    ordered.slice(0, CONFIG.maxSeats).forEach((id, i) => this.seats.set(id, i));
     this.applySeatMap(Object.fromEntries(this.seats));
     this.broadcastCtrl({ t: 'seats', seats: Object.fromEntries(this.seats) });
   }
 
   private applySeatMap(map: Record<string, number>): void {
+    // The table resizes to the number of seated participants (min 2 chairs).
+    seatLayout.setCount(Object.keys(map).length);
+
     let localSeated = false;
-    for (const [id, seat] of Object.entries(map)) {
-      const p = participants.get(id);
-      if (p) {
-        const wasUnseated = p.seatIndex < 0;
-        p.seatIndex = seat;
-        if (p.isLocal && wasUnseated) localSeated = true;
-      }
+    for (const p of participants.all()) {
+      const seat = map[p.id];
+      const wasUnseated = p.seatIndex < 0;
+      p.seatIndex = seat ?? -1; // absent from the map = spectator
+      if (p.isLocal && wasUnseated && p.seatIndex >= 0) localSeated = true;
     }
     if (localSeated) this.onSeated?.();
 
     // Seat map arrived but we're not in it → the table is full.
     if (!localSeated && this.selfId && !(this.selfId in map)) {
-      this.onRoomFull?.();
+      const local = participants.local();
+      if (local && local.seatIndex < 0) this.onRoomFull?.();
     }
   }
 

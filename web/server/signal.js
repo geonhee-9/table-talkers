@@ -4,6 +4,7 @@
 import { WebSocketServer } from 'ws';
 
 const PORT = process.env.PORT || 8787;
+const MAX_PEERS_PER_ROOM = 10; // matches the client's max table size
 const rooms = new Map(); // roomId -> Map<peerId, ws>
 let nextId = 1;
 
@@ -19,7 +20,13 @@ wss.on('connection', (ws) => {
     try { msg = JSON.parse(raw); } catch { return; }
 
     if (msg.t === 'join' && typeof msg.room === 'string' && !roomId) {
-      roomId = msg.room.slice(0, 32);
+      const requested = msg.room.slice(0, 32);
+      if ((rooms.get(requested)?.size ?? 0) >= MAX_PEERS_PER_ROOM) {
+        ws.send(JSON.stringify({ t: 'full' }));
+        ws.close();
+        return;
+      }
+      roomId = requested;
       peerId = String(nextId++);
       if (!rooms.has(roomId)) rooms.set(roomId, new Map());
       const room = rooms.get(roomId);
