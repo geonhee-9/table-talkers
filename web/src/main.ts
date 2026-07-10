@@ -196,7 +196,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Tab' && net) {
     e.preventDefault();
     toggleChat();
-  } else if (!typing && net && e.key >= '1' && e.key <= '5') {
+  } else if (!typing && net && e.key >= '1' && e.key <= '3') {
     net.sendEmote(Number(e.key) - 1);
   }
 });
@@ -215,8 +215,8 @@ function frame(): void {
 
   const local = participants.local();
   if (net && local) {
-    net.tick(dt, seated.yaw, seated.pitch);
-    seated.update(local.seatIndex);
+    seated.update(local.seatIndex, dt);
+    net.tick(dt, seated.yaw, seated.pitch, seated.leanFwd, seated.leanRight);
     voice.updatePanning();
   }
 

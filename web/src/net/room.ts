@@ -115,7 +115,7 @@ export class RoomNetwork {
   private addLocalParticipant(): void {
     const local: Participant = {
       id: this.selfId, isLocal: true, name: this.localName,
-      seatIndex: -1, headYaw: 0, headPitch: 0, speaking: false,
+      seatIndex: -1, headYaw: 0, headPitch: 0, leanFwd: 0, leanRight: 0, speaking: false,
     };
     participants.add(local);
     if (this.isHost) {
@@ -133,7 +133,8 @@ export class RoomNetwork {
 
     participants.add({
       id: peerId, isLocal: false, name: '',
-      seatIndex: this.seats.get(peerId) ?? -1, headYaw: 0, headPitch: 0, speaking: false,
+      seatIndex: this.seats.get(peerId) ?? -1,
+      headYaw: 0, headPitch: 0, leanFwd: 0, leanRight: 0, speaking: false,
     });
     this.onPeerCount?.();
 
@@ -216,9 +217,11 @@ export class RoomNetwork {
     ch.onmessage = (ev) => {
       const p = participants.get(peerId);
       if (!p) return;
-      const [yaw, pitch] = (ev.data as string).split(',');
+      const [yaw, pitch, leanF, leanR] = (ev.data as string).split(',');
       p.headYaw = Number(yaw) || 0;
       p.headPitch = Number(pitch) || 0;
+      p.leanFwd = Number(leanF) || 0;
+      p.leanRight = Number(leanR) || 0;
     };
   }
 
@@ -316,17 +319,20 @@ export class RoomNetwork {
   }
 
   /** Call every frame: throttled pose broadcast + 1Hz ping. */
-  tick(dt: number, localYaw: number, localPitch: number): void {
+  tick(dt: number, localYaw: number, localPitch: number, leanFwd: number, leanRight: number): void {
     const local = participants.local();
     if (local) {
       local.headYaw = localYaw;
       local.headPitch = localPitch;
+      local.leanFwd = leanFwd;
+      local.leanRight = leanRight;
     }
 
     this.poseTimer += dt;
     if (this.poseTimer >= 1 / CONFIG.headSyncHz) {
       this.poseTimer = 0;
-      const payload = `${localYaw.toFixed(1)},${localPitch.toFixed(1)}`;
+      const payload =
+        `${localYaw.toFixed(1)},${localPitch.toFixed(1)},${leanFwd.toFixed(2)},${leanRight.toFixed(2)}`;
       for (const link of this.links.values()) {
         if (link.pose?.readyState === 'open') link.pose.send(payload);
       }

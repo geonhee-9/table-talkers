@@ -8,6 +8,8 @@ export interface Participant {
   seatIndex: number; // -1 = unseated
   headYaw: number;   // degrees, relative to seat forward
   headPitch: number; // degrees, positive = up
+  leanFwd: number;   // -1..1 upper-body lean (back .. forward), lower body stays on the chair
+  leanRight: number; // -1..1 upper-body lean (left .. right)
   speaking: boolean;
 }
 
