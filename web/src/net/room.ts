@@ -54,17 +54,44 @@ export class RoomNetwork {
     return this.links.get(id)?.rttMs ?? -1;
   }
 
-  connect(): Promise<void> {
+  /**
+   * Connect to the signaling relay, retrying on failure — the free-tier host sleeps after
+   * idle periods and the first request can take 20-40s to wake it, which would otherwise
+   * surface as an immediate (and misleading) "server unreachable" error.
+   */
+  async connect(onRetry?: (attempt: number, max: number) => void): Promise<void> {
+    const maxAttempts = 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.connectOnce();
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.message === 'room-full') throw err; // not retryable
+        if (attempt === maxAttempts) throw err;
+        onRetry?.(attempt, maxAttempts);
+        await new Promise((r) => setTimeout(r, Math.min(3000 * attempt, 10000)));
+      }
+    }
+  }
+
+  private connectOnce(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(CONFIG.signalUrl);
-      this.ws.onerror = () => reject(new Error('signal-unreachable'));
+      const ws = new WebSocket(CONFIG.signalUrl);
+      this.ws = ws;
+      const settle = (fn: () => void) => {
+        ws.onerror = null;
+        ws.onclose = null;
+        fn();
+      };
+      ws.onerror = () => settle(() => reject(new Error('signal-unreachable')));
+      ws.onclose = () => settle(() => reject(new Error('signal-unreachable')));
       this.ws.onopen = () => {
         this.ws.send(JSON.stringify({ t: 'join', room: this.roomId }));
       };
       this.ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data as string);
         if (msg.t === 'full') {
-          reject(new Error('room-full'));
+          settle(() => reject(new Error('room-full')));
           return;
         }
         if (msg.t === 'welcome') {

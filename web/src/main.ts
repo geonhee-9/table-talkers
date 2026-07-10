@@ -117,7 +117,9 @@ async function joinRoom(withMic: boolean): Promise<void> {
 
   setJoinBusy(true, '방 연결 중…');
   try {
-    await net.connect();
+    await net.connect((attempt, max) => {
+      setJoinBusy(true, `서버 깨우는 중… (${attempt}/${max})`);
+    });
   } catch (err) {
     console.error('[TableTalkers] signaling connect failed:', err);
     hud.showJoinError(err instanceof Error && err.message === 'room-full' ? 'roomFull' : 'signalDown');
