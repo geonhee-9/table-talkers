@@ -11,17 +11,36 @@ export class SeatedCamera {
   leanFwd = 0;   // smoothed -1..1 (back .. forward)
   leanRight = 0; // smoothed -1..1 (left .. right)
 
-  private dragging = false;
+  private activePointer = -1;
+  private lastX = 0;
+  private lastY = 0;
   private readonly keys = new Set<string>();
 
   constructor(private readonly camera: THREE.PerspectiveCamera, dom: HTMLElement) {
-    dom.addEventListener('mousedown', () => { this.dragging = true; });
-    window.addEventListener('mouseup', () => { this.dragging = false; });
-    window.addEventListener('mousemove', (e) => {
-      if (!this.dragging && document.pointerLockElement !== dom) return;
-      this.yaw = clamp(this.yaw + e.movementX * CONFIG.mouseSensitivity, CONFIG.yawClampDeg);
-      this.pitch = clamp(this.pitch - e.movementY * CONFIG.mouseSensitivity, CONFIG.pitchClampDeg);
+    // Pointer events cover mouse AND touch. Deltas are tracked manually because iOS
+    // Safari does not report movementX/Y for touch pointers.
+    dom.addEventListener('pointerdown', (e) => {
+      this.activePointer = e.pointerId;
+      this.lastX = e.clientX;
+      this.lastY = e.clientY;
+      dom.setPointerCapture?.(e.pointerId);
     });
+    dom.addEventListener('pointermove', (e) => {
+      const locked = document.pointerLockElement === dom;
+      if (!locked && e.pointerId !== this.activePointer) return;
+      const dx = locked ? e.movementX : e.clientX - this.lastX;
+      const dy = locked ? e.movementY : e.clientY - this.lastY;
+      this.lastX = e.clientX;
+      this.lastY = e.clientY;
+      const sens = e.pointerType === 'touch' ? CONFIG.touchSensitivity : CONFIG.mouseSensitivity;
+      this.yaw = clamp(this.yaw + dx * sens, CONFIG.yawClampDeg);
+      this.pitch = clamp(this.pitch - dy * sens, CONFIG.pitchClampDeg);
+    });
+    const endDrag = (e: PointerEvent) => {
+      if (e.pointerId === this.activePointer) this.activePointer = -1;
+    };
+    dom.addEventListener('pointerup', endDrag);
+    dom.addEventListener('pointercancel', endDrag);
     dom.addEventListener('dblclick', () => { void dom.requestPointerLock(); });
 
     // WASD lean — ignored while typing in a text field.

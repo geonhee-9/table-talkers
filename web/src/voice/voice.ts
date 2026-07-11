@@ -36,6 +36,16 @@ export class WebRtcVoice implements VoiceService {
     void this.ctx.resume();
   }
 
+  /**
+   * Autoplay policy: after an auto-rejoin (page load, no click) the AudioContext starts
+   * suspended — call this from any first user gesture so peers become audible.
+   */
+  resumeAudio(): void {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      void this.ctx.resume();
+    }
+  }
+
   get hasMic(): boolean {
     return this.mic !== null;
   }

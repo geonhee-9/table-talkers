@@ -64,7 +64,9 @@ participants.onRemoved.add((p: Participant) => {
 // ---- Join flow ----
 let net: RoomNetwork | null = null;
 hud.setupDebugToggle();
-hud.showJoin(roomIdFromHash());
+
+// Autoplay policy: any first gesture wakes the audio graph (needed after auto-rejoin).
+document.addEventListener('pointerdown', () => voice.resumeAudio(), { once: true });
 
 const enterBtn = document.getElementById('enter') as HTMLButtonElement;
 const enterNoMicBtn = document.getElementById('enterNoMic') as HTMLButtonElement;
@@ -130,10 +132,13 @@ async function joinRoom(withMic: boolean): Promise<void> {
 
   hud.hideJoin();
   hud.showRoomPanel(roomId, voice.hasMic, () => {
+    localStorage.removeItem('tt.micPref'); // explicit leave — next visit asks again
     net?.leave();
     location.hash = '';
     location.reload();
   });
+  // Remember how we joined so a refresh can rejoin silently (no popups, no clicks).
+  localStorage.setItem('tt.micPref', voice.hasMic ? 'mic' : 'nomic');
   document.getElementById('bar')!.style.display = 'block';
   if (!voice.hasMic) {
     muteBtn.disabled = true;
@@ -144,6 +149,35 @@ async function joinRoom(withMic: boolean): Promise<void> {
 
 enterBtn.onclick = () => void joinRoom(true);
 enterNoMicBtn.onclick = () => void joinRoom(false);
+
+/**
+ * Refresh-in-room: rejoin the same table automatically with the saved name and mic choice.
+ * The mic is only reused when the browser already granted permission — an auto-rejoin must
+ * never surprise the user with a permission popup (it falls back to muted instead).
+ */
+async function tryAutoRejoin(): Promise<boolean> {
+  const roomId = roomIdFromHash();
+  const savedName = localStorage.getItem('tt.name');
+  const micPref = localStorage.getItem('tt.micPref');
+  if (!roomId || !savedName || !micPref) return false;
+
+  let withMic = micPref === 'mic';
+  if (withMic) {
+    try {
+      const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      if (status.state !== 'granted') withMic = false;
+    } catch {
+      // Safari has no 'microphone' query; a granted permission still resolves silently.
+    }
+  }
+
+  (document.getElementById('name') as HTMLInputElement).value = savedName;
+  await joinRoom(withMic);
+  return true;
+}
+
+hud.showJoin(roomIdFromHash());
+void tryAutoRejoin();
 
 // ---- Bottom bar: mute, emotes, chat ----
 const muteBtn = document.getElementById('muteBtn') as HTMLButtonElement;

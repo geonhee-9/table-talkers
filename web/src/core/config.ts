@@ -6,6 +6,7 @@ export const CONFIG = {
   yawClampDeg: 150,
   pitchClampDeg: 75,
   mouseSensitivity: 0.16,
+  touchSensitivity: 0.3,
   eyeHeight: 1.15,
   leanEaseSpeed: 8,     // how fast the upper body eases toward the WASD lean target
   leanShift: 0.34,      // metres the head shifts at full lean

@@ -6,23 +6,32 @@
   <title>Table Talkers</title>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #171210; font-family: system-ui, sans-serif; }
-    #app { position: fixed; inset: 0; }
-    canvas { display: block; }
+    #app { position: fixed; inset: 0; touch-action: none; }
+    canvas { display: block; touch-action: none; }
     .panel { position: fixed; background: rgba(24,18,15,.85); color: #f0e6da; border: 1px solid #4a3a30;
              border-radius: 10px; padding: 12px 14px; font-size: 14px; }
-    #join { top: 50%; left: 50%; transform: translate(-50%,-50%); width: 280px; text-align: center; }
+    #join { top: 50%; left: 50%; transform: translate(-50%,-50%); width: min(84vw, 300px); text-align: center; }
     #join h1 { font-size: 20px; margin: 0 0 10px; color: #ffcf99; }
     #join input { width: 90%; padding: 8px; border-radius: 6px; border: 1px solid #4a3a30;
-                  background: #241c17; color: #f0e6da; font-size: 15px; text-align: center; }
+                  background: #241c17; color: #f0e6da; font-size: 16px; text-align: center; }
     #join button, #room button { margin-top: 10px; padding: 8px 16px; border: 0; border-radius: 6px;
                   background: #c96f3b; color: #fff; font-size: 15px; cursor: pointer; }
     #join button:hover, #room button:hover { background: #e0834a; }
-    #room { top: 10px; left: 10px; display: none; }
+    #room { top: 10px; left: 10px; display: none; max-width: 62vw; }
     #room code { color: #ffcf99; }
-    #debug { top: 10px; right: 10px; display: none; white-space: pre; font-size: 12px; }
-    #hint { bottom: 8px; left: 50%; transform: translateX(-50%); display: none; font-size: 12px; opacity: .75; }
-    #toast { top: 12px; left: 50%; transform: translateX(-50%); display: none; }
+    #debug { top: 10px; right: 10px; display: none; white-space: pre; font-size: 12px; max-width: 40vw; overflow: hidden; }
+    #hint { bottom: 62px; left: 50%; transform: translateX(-50%); display: none; font-size: 12px;
+            opacity: .75; white-space: nowrap; }
+    #toast { top: 12px; left: 50%; transform: translateX(-50%); display: none; max-width: 86vw; }
     .err { color: #ff8a7a; font-size: 12px; margin-top: 8px; }
+
+    /* Mobile: compact panels, wrapping emote bar, no hint line (touch has no WASD/F1 anyway). */
+    @media (max-width: 640px) {
+      .panel { font-size: 13px; padding: 8px 10px; }
+      #hint { display: none !important; }
+      #room button { padding: 6px 10px; font-size: 13px; margin-top: 6px; }
+      #debug { font-size: 10px; }
+    }
   </style>
 </head>
 <body>
@@ -48,7 +57,7 @@
   <div id="toast" class="panel"></div>
   <div id="hint" class="panel">드래그=둘러보기 · WASD=상체 기울이기 · 1·2·3=이모트 · Tab=채팅 · F1=디버그</div>
 
-  <div id="bar" class="panel" style="bottom:44px; left:50%; transform:translateX(-50%); display:none;">
+  <div id="bar" class="panel">
     <button id="muteBtn" class="barBtn">🎤 켜짐</button>
     <button class="barBtn emoteBtn" data-kind="0">✋ 손들기 (1)</button>
     <button class="barBtn emoteBtn" data-kind="1">👍 좋아요 (2)</button>
@@ -56,17 +65,26 @@
     <button id="chatBtn" class="barBtn">💬</button>
   </div>
 
-  <div id="chat" class="panel" style="bottom:104px; left:10px; width:280px; display:none;">
-    <div id="chatLog" style="max-height:180px; overflow-y:auto; font-size:13px; margin-bottom:6px;"></div>
-    <input id="chatInput" maxlength="200" placeholder="메시지 (Enter로 전송)"
-           style="width:95%; padding:6px; border-radius:6px; border:1px solid #4a3a30; background:#241c17; color:#f0e6da;" />
+  <div id="chat" class="panel">
+    <div id="chatLog"></div>
+    <input id="chatInput" maxlength="200" placeholder="메시지 (Enter로 전송)" />
   </div>
 
   <style>
-    .barBtn { margin: 0 2px; padding: 6px 10px; border: 0; border-radius: 6px;
+    #bar { bottom: max(8px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+           display: none; max-width: 96vw; text-align: center; padding: 8px; }
+    .barBtn { margin: 3px 2px; padding: 8px 10px; border: 0; border-radius: 6px;
               background: #3a2d24; color: #f0e6da; font-size: 14px; cursor: pointer; }
     .barBtn:hover { background: #4d3b2e; }
     .barBtn.active { background: #c96f3b; }
+    #chat { bottom: 70px; left: 10px; width: min(85vw, 280px); display: none; }
+    #chatLog { max-height: max(120px, 22vh); overflow-y: auto; font-size: 13px; margin-bottom: 6px; }
+    #chatInput { width: 95%; padding: 6px; border-radius: 6px; border: 1px solid #4a3a30;
+                 background: #241c17; color: #f0e6da; font-size: 16px; }
+    @media (max-width: 640px) {
+      .barBtn { padding: 9px 8px; font-size: 12px; }
+      #chat { bottom: 96px; }
+    }
   </style>
 
   <script type="module" src="/src/main.ts"></script>
