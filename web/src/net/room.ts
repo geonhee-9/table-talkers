@@ -13,6 +13,7 @@ interface CtrlMsg {
   ts?: number;
   kind?: number;  // emote id (one-shot event, never synced state)
   text?: string;  // chat line
+  v?: number;     // protocol version (skew detection)
 }
 
 interface PeerLink {
@@ -22,7 +23,10 @@ interface PeerLink {
   rttMs: number;
   remoteSet: boolean;             // remote description applied yet?
   pendingIce: RTCIceCandidateInit[]; // ICE that arrived before the remote description
+  lastPoseSeq: number;            // drop out-of-order pose packets (channel is unordered)
 }
+
+export interface PoseSnapshot { yaw: number; pitch: number; leanFwd: number; leanRight: number }
 
 export class RoomNetwork {
   private ws!: WebSocket;
@@ -30,7 +34,6 @@ export class RoomNetwork {
   private isHost = false;
   private readonly links = new Map<string, PeerLink>();
   private readonly seats = new Map<string, number>(); // host-authoritative seat map
-  private poseTimer = 0;
   private pingTimer = 0;
 
   onSeated: (() => void) | null = null;
@@ -39,6 +42,41 @@ export class RoomNetwork {
   onEmote: ((participantId: string, kind: number) => void) | null = null;
   onChat: ((participantId: string, text: string) => void) | null = null;
   onRoomFull: (() => void) | null = null;
+  onVersionSkew: (() => void) | null = null;
+
+  private poseSource: (() => PoseSnapshot) | null = null;
+  private poseSeq = 0;
+  private poseInterval: ReturnType<typeof setInterval> | null = null;
+  private skewNotified = false;
+
+  /**
+   * Register the local pose getter and start broadcasting on a timer — NOT the render loop.
+   * rAF pauses in hidden tabs, which silently froze this client's avatar for everyone else;
+   * setInterval keeps ticking (throttled when hidden, but the user isn't moving then anyway).
+   */
+  setPoseSource(source: () => PoseSnapshot): void {
+    this.poseSource = source;
+    this.poseInterval ??= setInterval(() => this.broadcastPose(), 1000 / CONFIG.headSyncHz);
+  }
+
+  private broadcastPose(): void {
+    if (!this.poseSource) return;
+    const pose = this.poseSource();
+    const local = participants.local();
+    if (local) {
+      local.headYaw = pose.yaw;
+      local.headPitch = pose.pitch;
+      local.leanFwd = pose.leanFwd;
+      local.leanRight = pose.leanRight;
+    }
+
+    this.poseSeq++;
+    const payload = `${this.poseSeq},${pose.yaw.toFixed(1)},${pose.pitch.toFixed(1)},` +
+      `${pose.leanFwd.toFixed(2)},${pose.leanRight.toFixed(2)}`;
+    for (const link of this.links.values()) {
+      if (link.pose?.readyState === 'open') link.pose.send(payload);
+    }
+  }
 
   constructor(
     private readonly roomId: string,
@@ -128,7 +166,7 @@ export class RoomNetwork {
     if (link) return link;
 
     const pc = new RTCPeerConnection({ iceServers: [...CONFIG.stunServers] });
-    link = { pc, rttMs: -1, remoteSet: false, pendingIce: [] };
+    link = { pc, rttMs: -1, remoteSet: false, pendingIce: [], lastPoseSeq: -1 };
     this.links.set(peerId, link);
 
     participants.add({
@@ -161,7 +199,10 @@ export class RoomNetwork {
     const link = this.ensureLink(peerId);
     if (initiator) {
       this.bindCtrl(peerId, link.pc.createDataChannel('ctrl'));
-      this.bindPose(peerId, link.pc.createDataChannel('pose', { ordered: false, maxRetransmits: 0 }));
+      // Reliable but unordered: on lossy real-world paths (mobile/wifi) a fire-and-forget
+      // channel (maxRetransmits: 0) can lose most pose packets — avatars freeze while
+      // reliable ctrl traffic (seats/chat) still works. Retransmit, drop stale by seq.
+      this.bindPose(peerId, link.pc.createDataChannel('pose', { ordered: false }));
       const offer = await link.pc.createOffer();
       await link.pc.setLocalDescription(offer);
       this.signal(peerId, { sdp: link.pc.localDescription });
@@ -205,7 +246,7 @@ export class RoomNetwork {
     const link = this.links.get(peerId);
     if (link) link.ctrl = ch;
     ch.onopen = () => {
-      this.sendCtrl(peerId, { t: 'hi', name: this.localName });
+      this.sendCtrl(peerId, { t: 'hi', name: this.localName, v: CONFIG.protocolVersion });
       if (this.isHost) this.assignSeats();
     };
     ch.onmessage = (ev) => this.handleCtrl(peerId, JSON.parse(ev.data as string) as CtrlMsg);
@@ -216,8 +257,12 @@ export class RoomNetwork {
     if (link) link.pose = ch;
     ch.onmessage = (ev) => {
       const p = participants.get(peerId);
-      if (!p) return;
-      const [yaw, pitch, leanF, leanR] = (ev.data as string).split(',');
+      const link2 = this.links.get(peerId);
+      if (!p || !link2) return;
+      const [seq, yaw, pitch, leanF, leanR] = (ev.data as string).split(',');
+      const seqNum = Number(seq);
+      if (seqNum <= link2.lastPoseSeq) return; // stale packet on the unordered channel
+      link2.lastPoseSeq = seqNum;
       p.headYaw = Number(yaw) || 0;
       p.headPitch = Number(pitch) || 0;
       p.leanFwd = Number(leanF) || 0;
@@ -230,6 +275,10 @@ export class RoomNetwork {
     switch (msg.t) {
       case 'hi':
         if (p && msg.name) p.name = msg.name;
+        if (msg.v !== CONFIG.protocolVersion && !this.skewNotified) {
+          this.skewNotified = true;
+          this.onVersionSkew?.();
+        }
         break;
       case 'seats':
         if (!this.isHost && msg.seats) this.applySeatMap(msg.seats);
@@ -318,26 +367,8 @@ export class RoomNetwork {
     return Number(peerId) === Math.min(...ids);
   }
 
-  /** Call every frame: throttled pose broadcast + 1Hz ping. */
-  tick(dt: number, localYaw: number, localPitch: number, leanFwd: number, leanRight: number): void {
-    const local = participants.local();
-    if (local) {
-      local.headYaw = localYaw;
-      local.headPitch = localPitch;
-      local.leanFwd = leanFwd;
-      local.leanRight = leanRight;
-    }
-
-    this.poseTimer += dt;
-    if (this.poseTimer >= 1 / CONFIG.headSyncHz) {
-      this.poseTimer = 0;
-      const payload =
-        `${localYaw.toFixed(1)},${localPitch.toFixed(1)},${leanFwd.toFixed(2)},${leanRight.toFixed(2)}`;
-      for (const link of this.links.values()) {
-        if (link.pose?.readyState === 'open') link.pose.send(payload);
-      }
-    }
-
+  /** Call every frame: RTT ping (pose broadcast runs on its own timer — see setPoseSource). */
+  tick(dt: number): void {
     this.pingTimer += dt;
     if (this.pingTimer >= 1) {
       this.pingTimer = 0;
@@ -355,6 +386,10 @@ export class RoomNetwork {
   }
 
   leave(): void {
+    if (this.poseInterval) {
+      clearInterval(this.poseInterval);
+      this.poseInterval = null;
+    }
     for (const link of this.links.values()) link.pc.close();
     this.links.clear();
     this.ws.close();

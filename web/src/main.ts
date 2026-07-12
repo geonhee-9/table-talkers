@@ -116,6 +116,11 @@ async function joinRoom(withMic: boolean): Promise<void> {
     appendChatLine(name, text);
   };
   net.onRoomFull = () => hud.toast('자리가 다 찼어요 — 구경만 할 수 있어요.');
+  net.onVersionSkew = () =>
+    hud.toast('상대방 앱이 예전 버전이에요 — 양쪽 모두 새로고침하면 해결됩니다.');
+  net.setPoseSource(() => ({
+    yaw: seated.yaw, pitch: seated.pitch, leanFwd: seated.leanFwd, leanRight: seated.leanRight,
+  }));
 
   setJoinBusy(true, '방 연결 중…');
   try {
@@ -250,7 +255,7 @@ function frame(): void {
   const local = participants.local();
   if (net && local) {
     seated.update(local.seatIndex, dt);
-    net.tick(dt, seated.yaw, seated.pitch, seated.leanFwd, seated.leanRight);
+    net.tick(dt);
     voice.updatePanning();
   }
 
