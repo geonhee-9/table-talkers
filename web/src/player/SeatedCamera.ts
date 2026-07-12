@@ -77,25 +77,27 @@ export class SeatedCamera {
     this.leanRight += (targetRight - this.leanRight) * ease;
 
     const a = seatLayout.anchor(seatIndex);
-    // Seat frame: forward points at the table centre, right is 90° clockwise of it.
+    // Face the table (seat forward = anchor yaw + 180 in world), then add mouse look.
+    const yawRad = ((a.yawDeg + 180 - this.yaw) * Math.PI) / 180;
+
+    // Forward = toward the table centre. Right = the camera's actual screen-right so that D
+    // moves the viewpoint right AND banks right (they used to fight: the old "right" was the
+    // seat's anatomical right, which is screen-LEFT once the camera faces the table).
     const fx = -a.x, fz = -a.z;
     const flen = Math.hypot(fx, fz) || 1;
     const fwd = { x: fx / flen, z: fz / flen };
-    const right = { x: fwd.z, z: -fwd.x };
+    const camRight = { x: Math.cos(yawRad), z: -Math.sin(yawRad) };
 
     const shift = CONFIG.leanShift;
-    const px = a.x + (fwd.x * this.leanFwd + right.x * this.leanRight) * shift;
-    const pz = a.z + (fwd.z * this.leanFwd + right.z * this.leanRight) * shift;
+    const px = a.x + (fwd.x * this.leanFwd + camRight.x * this.leanRight) * shift;
+    const pz = a.z + (fwd.z * this.leanFwd + camRight.z * this.leanRight) * shift;
     // Leaning dips the head a little (you don't just slide — you tip).
     const py = 0.55 + CONFIG.eyeHeight
       - Math.abs(this.leanFwd) * 0.1 - Math.abs(this.leanRight) * 0.05;
     this.camera.position.set(px, py, pz);
 
-    // Face the table (seat forward = anchor yaw + 180 in world), then add look + a subtle
-    // roll into the sideways lean.
-    const yawRad = ((a.yawDeg + 180 - this.yaw) * Math.PI) / 180;
     const pitchRad = (this.pitch * Math.PI) / 180;
-    const rollRad = (-this.leanRight * 7 * Math.PI) / 180;
+    const rollRad = (-this.leanRight * CONFIG.leanRollDeg * Math.PI) / 180;
     this.camera.rotation.set(pitchRad, yawRad, rollRad);
   }
 }

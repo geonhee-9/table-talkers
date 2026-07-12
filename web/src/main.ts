@@ -242,7 +242,7 @@ window.addEventListener('keydown', (e) => {
 
 // Dev/diagnostic handle (used by agent-driven preview tests; harmless in prod).
 Object.assign(window as unknown as Record<string, unknown>, {
-  __tt: { participants, avatars, seatLayout, net: () => net },
+  __tt: { participants, avatars, seatLayout, net: () => net, seated, camera },
 });
 
 // ---- Render loop ----
