@@ -64,11 +64,15 @@ export class Avatar {
     this.mouth.scale.set(1.2, 0.35, 0.5);
     this.head.add(skull, this.eyeL, this.eyeR, this.mouth);
 
-    // Hands (hidden until an emote plays).
-    this.handL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), skin);
+    // Hands (hidden until an emote plays). Fist is chunky enough to read as a fist (not a
+    // floating dot); the thumb attaches to its upper-front side at an angle, matching a real
+    // thumbs-up silhouette instead of one digit poking straight up out of the centre.
+    this.handL = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), skin);
+    this.handL.scale.set(1, 0.88, 1.05);
     this.handR = this.handL.clone();
-    this.thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.07, 4, 8), skin);
-    this.thumb.position.set(0, 0.075, 0.015);
+    this.thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.075, 4, 8), skin);
+    this.thumb.position.set(0.03, 0.06, 0.045);
+    this.thumb.rotation.set((18 * Math.PI) / 180, 0, (-30 * Math.PI) / 180);
     this.thumb.visible = false;
     this.handR.add(this.thumb);
     this.handL.visible = false;
@@ -191,9 +195,16 @@ export class Avatar {
       case RAISE_HAND: {
         this.handR.visible = true;
         const up = Math.min(1, t / 0.3);
-        // Rises up-and-forward into view; a gentle wave while held.
-        const wave = t > 0.3 ? Math.sin(t * 5) * 0.05 : 0;
-        this.handR.position.set(0.26 + wave, 0.7 + up * 0.85, 0.3);
+        // Checked against the fist's own radius (not just its centre point) on a true
+        // mobile-portrait aspect (375×812) using the camera's actual screen-right/up vectors —
+        // that's what caught this: the centre point tested fine, but the near, wide fist's edge
+        // was clipped off the left of the frame. Depth 0.9 (vs 0.7 for thumbs-up/clap) shrinks
+        // its angular size enough to give the edge headroom. It originally sat 41° off horizontal
+        // axis and 0.4m above eye level at a close z=0.55: technically "in front of" the camera
+        // but outside the viewport — invisible to the local player despite reading fine across
+        // the table.
+        const wave = t > 0.3 ? Math.sin(t * 5) * 0.025 : 0;
+        this.handR.position.set(0.09 + wave, 0.6 + up * 0.65, 0.9);
         if (this.participant.speaking && t > 0.6) this.emoteT = raiseHold; // lower when you speak
         break;
       }
