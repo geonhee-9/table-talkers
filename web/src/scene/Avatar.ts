@@ -19,6 +19,11 @@ const CLAP = 2;
 export class Avatar {
   readonly group = new THREE.Group();
   private readonly upperBody = new THREE.Group(); // tilts for lean; lower body stays put
+  // Where the local player's camera attaches (sibling of head/body under upperBody, so it
+  // inherits ONLY the lean tilt — not head's own network-smoothed look rotation, which would
+  // add input lag). This is what makes the camera move in lockstep with the torso: same
+  // rotation, same pivot, not two independently-computed transforms that can drift apart.
+  private readonly eyeAnchor = new THREE.Object3D();
   private readonly head: THREE.Group;
   private readonly mouth: THREE.Mesh;
   private readonly eyeL: THREE.Mesh;
@@ -78,7 +83,8 @@ export class Avatar {
     this.handL.visible = false;
     this.handR.visible = false;
 
-    this.upperBody.add(this.body, this.head, this.handL, this.handR);
+    this.eyeAnchor.position.set(0, CONFIG.eyeHeight, 0);
+    this.upperBody.add(this.body, this.head, this.handL, this.handR, this.eyeAnchor);
 
     this.ring = new THREE.Mesh(
       new THREE.RingGeometry(0.32, 0.42, 32),
@@ -105,10 +111,25 @@ export class Avatar {
     this.group.add(this.emoteLabel);
   }
 
-  /** First-person: hide my own head/name so they never block my camera (hands stay visible). */
+  /**
+   * First-person: hide my own head/torso/name so they never block my camera or let me see my
+   * own neck-stump (hands stay visible — that's the point of the earlier emote-visibility fix).
+   */
   setFirstPersonView(): void {
     this.head.visible = false;
+    this.body.visible = false;
     this.nameSprite.visible = false;
+  }
+
+  /**
+   * Parent the given camera to this avatar's eye position. Once attached, the camera inherits
+   * this avatar's seat position AND upper-body lean tilt automatically via the scene graph —
+   * there is no separate camera transform to keep in sync, so it cannot drift from how the body
+   * actually moves (which is what made leaning look like "only the head moves" before).
+   */
+  attachCamera(camera: THREE.Object3D): void {
+    this.eyeAnchor.add(camera);
+    camera.position.set(0, 0, 0);
   }
 
   applySeat(): void {

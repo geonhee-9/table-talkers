@@ -100,7 +100,14 @@ async function joinRoom(withMic: boolean): Promise<void> {
   location.hash = `r=${roomId}`;
 
   net = new RoomNetwork(roomId, name, voice);
-  net.onSeated = () => seated.sit();
+  net.onSeated = () => {
+    seated.sit();
+    // Parent the camera to the local avatar's eye anchor so it inherits the seat position and
+    // upper-body lean tilt through the scene graph (see SeatedCamera.ts header) instead of a
+    // second, independently-computed transform that could drift from how the body actually moves.
+    const localP = participants.local();
+    if (localP) avatars.get(localP.id)?.attachCamera(camera);
+  };
   net.onHostLeft = () => {
     hud.toast(hud.loc('hostLeft'));
     net?.leave();
@@ -242,7 +249,7 @@ window.addEventListener('keydown', (e) => {
 
 // Dev/diagnostic handle (used by agent-driven preview tests; harmless in prod).
 Object.assign(window as unknown as Record<string, unknown>, {
-  __tt: { participants, avatars, seatLayout, net: () => net, seated, camera },
+  __tt: { participants, avatars, seatLayout, net: () => net, seated, camera, renderer, scene },
 });
 
 // ---- Render loop ----

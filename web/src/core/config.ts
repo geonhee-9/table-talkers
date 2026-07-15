@@ -10,9 +10,11 @@ export const CONFIG = {
   touchSensitivity: 0.3,
   eyeHeight: 1.15,
   leanEaseSpeed: 8,     // how fast the upper body eases toward the WASD lean target
-  leanShift: 0.34,      // metres the head shifts at full lean
-  leanMaxDeg: 20,       // max upper-body tilt angle
-  leanRollDeg: 6,       // camera bank into a sideways lean
+  // Max upper-body tilt angle. The camera now rotates around the actual hip pivot (it's parented
+  // to the avatar, ~1.7m lever arm to the eye), so this angle is amplified into a much bigger
+  // visual swing than the old position-only camera ever had — 20° here reads as a dramatic swoop,
+  // not a conversational lean. Keep this modest for that reason.
+  leanMaxDeg: 9,
   speakingThreshold: 0.06,
   stereoPanStrength: 0.45,
   signalUrl: (import.meta as { env?: Record<string, string> }).env?.VITE_SIGNAL_URL

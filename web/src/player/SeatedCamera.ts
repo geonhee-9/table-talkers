@@ -1,15 +1,21 @@
 // Seated first-person: mouse-drag head look (yaw/pitch clamped) + WASD upper-body lean
-// (lower body stays fixed on the chair). Position/orientation follow the dynamic seat
-// layout every frame, so the camera glides when the table rearranges.
+// (lower body stays fixed on the chair).
+//
+// The camera does NOT compute its own world position/tilt for the lean. It is parented to the
+// local avatar's eye anchor (see Avatar.attachCamera), which lives inside the SAME upperBody
+// group that visibly tilts for everyone else — so the lean transform is applied exactly once
+// and the camera inherits it through the scene graph. Two independently-computed transforms
+// (one for what peers see, one for what you see) could only ever approximate each other; a
+// shared transform can't drift apart. This file only ever sets the camera's LOCAL look
+// rotation (yaw/pitch) on top of whatever the parent chain already contributes.
 import * as THREE from 'three';
 import { CONFIG } from '../core/config';
-import { seatLayout } from '../core/seats';
 
 export class SeatedCamera {
   yaw = 0;   // degrees
   pitch = 0; // degrees
-  leanFwd = 0;   // smoothed -1..1 (back .. forward)
-  leanRight = 0; // smoothed -1..1 (left .. right)
+  leanFwd = 0;   // eased -1..1 (back .. forward) — reported to the network; rendered by Avatar
+  leanRight = 0; // eased -1..1 (left .. right)
 
   private activePointer = -1;
   private lastX = 0;
@@ -59,13 +65,18 @@ export class SeatedCamera {
     this.pitch = 0;
   }
 
-  /** Overview shot before being seated. */
+  /** Overview shot before being seated. Detaches the camera in case it was parented to an
+   * avatar in a previous room (leaving/host-migration) — position/lookAt are only meaningful
+   * in world space, i.e. with no parent. */
   preview(): void {
+    this.camera.removeFromParent();
+    this.camera.rotation.set(0, 0, 0);
     this.camera.position.set(0, 2.4, -4.6);
     this.camera.lookAt(0, 0.8, 0);
   }
 
-  /** Call every frame while seated — tracks lean input + the (possibly resized) layout. */
+  /** Call every frame while seated. Only the look direction is ours to set — position and the
+   * lean tilt come from the parent chain (see the file header). */
   update(seatIndex: number, dt: number): void {
     if (seatIndex < 0) return;
 
@@ -76,29 +87,11 @@ export class SeatedCamera {
     this.leanFwd += (targetFwd - this.leanFwd) * ease;
     this.leanRight += (targetRight - this.leanRight) * ease;
 
-    const a = seatLayout.anchor(seatIndex);
-    // Face the table (seat forward = anchor yaw + 180 in world), then add mouse look.
-    const yawRad = ((a.yawDeg + 180 - this.yaw) * Math.PI) / 180;
-
-    // Forward = toward the table centre. Right = the camera's actual screen-right so that D
-    // moves the viewpoint right AND banks right (they used to fight: the old "right" was the
-    // seat's anatomical right, which is screen-LEFT once the camera faces the table).
-    const fx = -a.x, fz = -a.z;
-    const flen = Math.hypot(fx, fz) || 1;
-    const fwd = { x: fx / flen, z: fz / flen };
-    const camRight = { x: Math.cos(yawRad), z: -Math.sin(yawRad) };
-
-    const shift = CONFIG.leanShift;
-    const px = a.x + (fwd.x * this.leanFwd + camRight.x * this.leanRight) * shift;
-    const pz = a.z + (fwd.z * this.leanFwd + camRight.z * this.leanRight) * shift;
-    // Leaning dips the head a little (you don't just slide — you tip).
-    const py = 0.55 + CONFIG.eyeHeight
-      - Math.abs(this.leanFwd) * 0.1 - Math.abs(this.leanRight) * 0.05;
-    this.camera.position.set(px, py, pz);
-
+    // The parent (group) already contributes the seat's own yaw; we only add "face the table"
+    // (180°) plus the user's look yaw/pitch.
+    const yawRad = ((180 - this.yaw) * Math.PI) / 180;
     const pitchRad = (this.pitch * Math.PI) / 180;
-    const rollRad = (-this.leanRight * CONFIG.leanRollDeg * Math.PI) / 180;
-    this.camera.rotation.set(pitchRad, yawRad, rollRad);
+    this.camera.rotation.set(pitchRad, yawRad, 0);
   }
 }
 
