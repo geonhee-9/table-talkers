@@ -1,8 +1,8 @@
 // Primitive avatar with presence built in: eyes for gaze, mouth driven by voice level,
-// blink/breathing, seat colors, speaking ring, name sprite, WASD upper-body lean, and three
-// hand emotes (raise hand / thumbs up / clap). The upper body (torso+head+hands) sits in one
-// group that tilts for lean while the lower body stays on the chair. Only head yaw/pitch, lean,
-// and the name travel over the network — everything else is animated locally.
+// blink/breathing, seat colors, speaking ring, name sprite, WASD upper-body lean, and two
+// hand emotes (raise hand / clap). The upper body (torso+head+hands) sits in one group that
+// tilts for lean while the lower body stays on the chair. Only head yaw/pitch, lean, and the
+// name travel over the network — everything else is animated locally.
 import * as THREE from 'three';
 import { CONFIG } from '../core/config';
 import { seatLayout } from '../core/seats';
@@ -11,10 +11,9 @@ import type { VoiceService } from '../voice/voice';
 
 const PALETTE = [0xe8735f, 0x5a9e99, 0xedb75c, 0x9e8cc7, 0x8cad73, 0x709ecc, 0xd98fa5, 0xb8a380];
 
-// Emote ids (match the 1/2/3 hotkeys and bottom-bar buttons).
+// Emote ids (match the 1/2 hotkeys and bottom-bar buttons).
 const RAISE_HAND = 0;
-const THUMBS_UP = 1;
-const CLAP = 2;
+const CLAP = 1;
 
 export class Avatar {
   readonly group = new THREE.Group();
@@ -33,7 +32,6 @@ export class Avatar {
   private readonly nameSprite: THREE.Sprite;
   private readonly handL: THREE.Mesh;
   private readonly handR: THREE.Mesh;
-  private readonly thumb: THREE.Mesh; // shown only during thumbs-up
   private smoothYaw = 0;
   private smoothPitch = 0;
   private smoothLeanFwd = 0;
@@ -69,17 +67,10 @@ export class Avatar {
     this.mouth.scale.set(1.2, 0.35, 0.5);
     this.head.add(skull, this.eyeL, this.eyeR, this.mouth);
 
-    // Hands (hidden until an emote plays). Fist is chunky enough to read as a fist (not a
-    // floating dot); the thumb attaches to its upper-front side at an angle, matching a real
-    // thumbs-up silhouette instead of one digit poking straight up out of the centre.
+    // Hands (hidden until an emote plays).
     this.handL = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), skin);
     this.handL.scale.set(1, 0.88, 1.05);
     this.handR = this.handL.clone();
-    this.thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.075, 4, 8), skin);
-    this.thumb.position.set(0.03, 0.06, 0.045);
-    this.thumb.rotation.set((18 * Math.PI) / 180, 0, (-30 * Math.PI) / 180);
-    this.thumb.visible = false;
-    this.handR.add(this.thumb);
     this.handL.visible = false;
     this.handR.visible = false;
 
@@ -99,12 +90,12 @@ export class Avatar {
     this.group.add(this.upperBody, this.ring, this.nameSprite);
   }
 
-  /** One-shot emote: 0 raise hand · 1 thumbs up · 2 clap. */
+  /** One-shot emote: 0 raise hand · 1 clap. */
   playEmote(kind: number): void {
     this.emoteKind = kind;
     this.emoteT = 0;
     if (this.participant.isLocal) return; // own floating label would sit at eye level
-    const labels = ['손들기!', '좋아요', '짝짝짝'];
+    const labels = ['손들기!', '짝짝짝'];
     if (this.emoteLabel) this.group.remove(this.emoteLabel);
     this.emoteLabel = makeNameSprite(labels[kind] ?? '!');
     this.emoteLabel.position.y = 1.75;
@@ -209,8 +200,8 @@ export class Avatar {
     if (this.emoteKind < 0) return;
     this.emoteT += dt;
     const t = this.emoteT;
-    const raiseHold = 5; // ✋ holds up (turn-taking); the others are quick
-    const duration = this.emoteKind === RAISE_HAND ? raiseHold : this.emoteKind === CLAP ? 1.5 : 1.3;
+    const raiseHold = 5; // ✋ holds up (turn-taking); clap is quick
+    const duration = this.emoteKind === RAISE_HAND ? raiseHold : 1.5;
 
     switch (this.emoteKind) {
       case RAISE_HAND: {
@@ -219,22 +210,13 @@ export class Avatar {
         // Checked against the fist's own radius (not just its centre point) on a true
         // mobile-portrait aspect (375×812) using the camera's actual screen-right/up vectors —
         // that's what caught this: the centre point tested fine, but the near, wide fist's edge
-        // was clipped off the left of the frame. Depth 0.9 (vs 0.7 for thumbs-up/clap) shrinks
-        // its angular size enough to give the edge headroom. It originally sat 41° off horizontal
-        // axis and 0.4m above eye level at a close z=0.55: technically "in front of" the camera
-        // but outside the viewport — invisible to the local player despite reading fine across
-        // the table.
+        // was clipped off the left of the frame. Depth 0.9 (vs 0.68 for clap) shrinks its angular
+        // size enough to give the edge headroom. It originally sat 41° off horizontal axis and
+        // 0.4m above eye level at a close z=0.55: technically "in front of" the camera but outside
+        // the viewport — invisible to the local player despite reading fine across the table.
         const wave = t > 0.3 ? Math.sin(t * 5) * 0.025 : 0;
         this.handR.position.set(0.09 + wave, 0.6 + up * 0.65, 0.9);
         if (this.participant.speaking && t > 0.6) this.emoteT = raiseHold; // lower when you speak
-        break;
-      }
-      case THUMBS_UP: {
-        this.handR.visible = true;
-        this.thumb.visible = true;
-        const pop = 1 + 0.3 * Math.exp(-5 * t) * Math.sin(t * 16);
-        this.handR.position.set(0.26, 1.08, 0.7); // in front, just below eye level, in own view
-        this.handR.scale.setScalar(pop);
         break;
       }
       case CLAP: {
@@ -256,7 +238,6 @@ export class Avatar {
       this.emoteKind = -1;
       this.handL.visible = false;
       this.handR.visible = false;
-      this.thumb.visible = false;
       this.handR.scale.setScalar(1);
       if (this.emoteLabel) { this.group.remove(this.emoteLabel); this.emoteLabel = null; }
     }

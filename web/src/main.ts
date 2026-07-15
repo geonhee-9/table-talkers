@@ -242,7 +242,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Tab' && net) {
     e.preventDefault();
     toggleChat();
-  } else if (!typing && net && e.key >= '1' && e.key <= '3') {
+  } else if (!typing && net && e.key >= '1' && e.key <= '2') {
     net.sendEmote(Number(e.key) - 1);
   }
 });
